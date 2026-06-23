@@ -1,31 +1,43 @@
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes.weather import router as weather_router
+from app.api.v1.router import router as v1_router
+from app.core.config import get_settings
 
-app = FastAPI()
 
-app.include_router(weather_router)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    yield
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins = ["http://localhost:5173"],
-    allow_credentials = True,
-    allow_methods = ["*"],
-    allow_headers = ["*"],
-)
+def create_app() -> FastAPI:
+    settings = get_settings()
 
-@app.get("/")
-def root():
-    return {
-        "message": "Hiking Weather API"
-    } 
+    app = FastAPI(
+        title="HikeCast API",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan,
+    )
 
-@app.get("/health")
-def health():
-    return {
-        "status": "OK"
-    }
-    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[str(o) for o in settings.cors_origins],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-# Step 11 Start work on the frontend
+    app.include_router(v1_router, prefix="/api/v1")
+
+    @app.get("/health", tags=["meta"])
+    async def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    return app
+
+
+app = create_app()

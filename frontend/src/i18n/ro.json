@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "HikeCast",
+    "tagline": "Prognoze pentru drumeții în Carpați"
+  },
+  "nav": {
+    "explore": "Explorează",
+    "saved": "Salvate",
+    "recommendations": "Recomandări",
+    "profile": "Profil"
+  },
+  "footer": {
+    "attribution": "Date meteo de la Open-Meteo (CC BY 4.0)",
+    "disclaimer": "Prognozele sunt orientative. Verificați întotdeauna ANM și Salvamont înainte de a merge în munți."
+  },
+  "score": {
+    "go": "Du-te",
+    "caution": "Atenție",
+    "no_go": "Nu merge"
+  }
+}

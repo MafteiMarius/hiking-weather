@@ -1,0 +1,21 @@
+{
+  "app": {
+    "name": "HikeCast",
+    "tagline": "Hiker-tuned forecasts for the Carpathians"
+  },
+  "nav": {
+    "explore": "Explore",
+    "saved": "Saved",
+    "recommendations": "Recommendations",
+    "profile": "Profile"
+  },
+  "footer": {
+    "attribution": "Weather data by Open-Meteo (CC BY 4.0)",
+    "disclaimer": "Forecasts are for planning only. Always check ANM and Salvamont before going into the mountains."
+  },
+  "score": {
+    "go": "Go",
+    "caution": "Caution",
+    "no_go": "No Go"
+  }
+}
