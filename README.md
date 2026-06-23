@@ -2,6 +2,119 @@
 
 A weather companion for hiking in the Romanian Carpathians.
 
+---
+
+## Setting up on a new Linux machine
+
+### Prerequisites
+
+```bash
+# Verify these are installed before starting
+git --version          # any recent version
+docker --version       # 24+ recommended
+docker compose version # built-in plugin, not docker-compose
+python3 --version      # 3.12 or 3.14
+node --version         # 20+
+npm --version          # 10+
+```
+
+If Python 3.12+ is missing on Ubuntu/Debian:
+
+```bash
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update && sudo apt install python3.12 python3.12-venv python3.12-dev
+```
+
+### 1 — Clone and configure
+
+```bash
+git clone https://github.com/MafteiMarius/hiking-weather.git
+cd hiking-weather
+cp .env.example .env
+```
+
+Open `.env` and replace the JWT secret with a real one (the placeholder is too short and triggers a warning):
+
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+# paste the output as JWT_SECRET= in .env
+```
+
+Leave everything else as-is — the defaults match the Docker Compose setup.
+
+### 2 — Start the database
+
+```bash
+docker compose up -d db
+# wait ~5 seconds for Postgres to be ready
+docker compose logs db --tail 5   # should end with "database system is ready to accept connections"
+```
+
+### 3 — Backend
+
+```bash
+cd backend
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -e ".[dev]"          # installs app + test deps from pyproject.toml
+```
+
+Run the migration and create the test database:
+
+```bash
+alembic upgrade head
+
+docker exec hiking-weather-db-1 psql -U hikecast -c "CREATE DATABASE hikecast_test;"
+docker exec hiking-weather-db-1 psql -U hikecast -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" hikecast_test
+docker exec hiking-weather-db-1 psql -U hikecast -c "CREATE EXTENSION IF NOT EXISTS postgis;" hikecast_test
+```
+
+Verify everything works:
+
+```bash
+TEST_DATABASE_URL="postgresql+asyncpg://hikecast:hikecast@localhost:5432/hikecast_test" \
+  pytest tests/ -v
+# expected: 39 passed
+```
+
+Start the dev server:
+
+```bash
+uvicorn app.main:app --reload
+# API docs at http://localhost:8000/docs
+```
+
+### 4 — Frontend
+
+```bash
+cd ../frontend        # from repo root: cd frontend
+npm install
+npm run dev
+# App at http://localhost:5173
+```
+
+### 5 — Daily workflow
+
+Each session only needs:
+
+```bash
+# Terminal 1 (backend)
+cd hiking-weather/backend && source venv/bin/activate
+uvicorn app.main:app --reload
+
+# Terminal 2 (frontend)
+cd hiking-weather/frontend
+npm run dev
+```
+
+Docker Compose keeps the database running between reboots. If it stopped:
+
+```bash
+docker compose up -d db
+```
+
+---
+
 Most weather apps tell you it will be 18 degrees and partly cloudy. That is
 not what you need to know at 4 AM before driving to a trailhead. HikeCast
 answers the questions that actually matter on a mountain: are the ridge gusts

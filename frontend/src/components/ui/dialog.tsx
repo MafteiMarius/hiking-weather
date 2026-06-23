@@ -24,10 +24,10 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+      {/* Backdrop — z-[2000] clears Leaflet's highest layer (z ~700) */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
