@@ -10,9 +10,6 @@ is this spot historically nasty for this week of the year.
 
 Built as a learning project and as a tool I use on real trips.
 
-**Live demo:** https://hikecast.app
-**API docs:** https://api.hikecast.app/docs
-
 ## What it does
 
 - **7-day forecast** for any point, with an hourly view.
@@ -68,8 +65,8 @@ Full architecture diagram and request lifecycle: `docs/architecture.md`.
 **Backend.** Python 3.12, FastAPI, SQLAlchemy 2 async, Alembic, Pydantic v2,
 PostgreSQL 16 with PostGIS 3.4, fastapi-users, httpx, APScheduler.
 
-**Frontend.** React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, React
-Router, TanStack Query, Leaflet with OpenTopoMap tiles, Recharts,
+**Frontend.** React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, React
+Router v7, TanStack Query v5, Leaflet with OpenTopoMap tiles, Recharts,
 react-i18next, vite-plugin-pwa.
 
 **Infra.** Docker Compose locally. In production: Neon for Postgres, Railway
@@ -138,7 +135,7 @@ docker-compose.yml
 
 ```bash
 cd backend && pytest
-cd frontend && pnpm test
+cd frontend && npm test
 ```
 
 Critical paths covered: the safety score, the recommendation ranker, auth

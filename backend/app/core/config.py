@@ -1,14 +1,24 @@
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Walk up from this file (backend/app/core/) to find the nearest .env —
+# works whether uvicorn is run from backend/ or the repo root.
+_HERE = Path(__file__).resolve().parent
+_ENV_CANDIDATES = [
+    _HERE.parent.parent.parent / ".env",  # repo root  (docker-compose / CI)
+    _HERE.parent.parent / ".env",         # backend/   (local pip install)
+]
+_ENV_FILE = next((str(p) for p in _ENV_CANDIDATES if p.exists()), ".env")
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Database
@@ -20,15 +30,9 @@ class Settings(BaseSettings):
     refresh_lifetime_seconds: int = 2_592_000
     cookie_secure: bool = True
 
-    # CORS — accepts a comma-separated string or a JSON list in the env var
-    cors_origins: list[AnyHttpUrl] = ["http://localhost:5173"]  # type: ignore[assignment]
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def _split_cors(cls, v: object) -> object:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+    # Comma-separated origins, e.g. "http://localhost:5173,https://hikecast.app"
+    # Kept as str so pydantic-settings doesn't try to JSON-decode it.
+    cors_origins: str = "http://localhost:5173"
 
     # Open-Meteo
     open_meteo_base_url: str = "https://api.open-meteo.com/v1"
