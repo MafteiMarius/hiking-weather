@@ -59,6 +59,42 @@ spec. Flag on Day 16 if Railway's build image doesn't yet carry 3.12.
 
 ---
 
+## 008 — fastapi-users v15: DatabaseStrategy removed, AccessToken model owned by us
+
+**What changed:** fastapi-users 15.0 dropped `DatabaseStrategy`, `SQLAlchemyBaseAccessTokenTableUUID`, and `SQLAlchemyAccessTokenDatabase`. The library no longer provides a DB-backed token strategy or an AccessToken base model.
+
+**Decision:** We own the `access_tokens` table entirely. Added `expires_at TIMESTAMPTZ` column (required for expiry checks) and wrote thin helpers in `app/core/tokens.py`: `create_refresh_token`, `get_user_id_for_refresh_token`, `revoke_refresh_token`. The rest of fastapi-users (UserManager, register router, users router, current_user dependency, Argon2id) is unchanged.
+
+---
+
+## 009 — pytest-asyncio loop-scope configuration
+
+**Problem:** Module-level `create_async_engine` + session-scoped fixtures + function-scoped tests caused asyncpg "Future attached to a different loop" errors.
+
+**Decision:** Set `asyncio_default_fixture_loop_scope = "session"` in `pyproject.toml` so all async fixtures share one event loop. Add `pytestmark = pytest.mark.asyncio(loop_scope="session")` in each test module so tests also run in that loop. Engine is created inside a `scope="session"` fixture (not at module level) so it belongs to the right loop from the start.
+
+---
+
+## 010 — Test email domain must be a real TLD
+
+**Problem:** `test@hikecast.test` fails `EmailStr` validation in email-validator ≥ 2.x because `.test` is RFC 6761 reserved.
+
+**Decision:** Use `test@example.com` in tests. `example.com` is IANA-reserved for documentation and will never exist, so it's safe for test data and always passes email syntax validation.
+
+---
+
+## 007 — Two-token auth: stateless JWT access + DB-backed refresh
+
+**Choice:** Short-lived JWT (15 min) in `hikecast_access` cookie for access; opaque token in `access_tokens` table and `hikecast_refresh` cookie for refresh.
+
+**Why DB-backed refresh:** Clearing the cookie on logout is not enough — the token itself would still be valid until expiry if stolen. Storing refresh tokens in the DB lets logout do a hard `DELETE`, making the token unusable even if someone captured the cookie. No Redis in v1, so the DB is the revocation store.
+
+**Why custom login/logout/refresh endpoints:** fastapi-users' built-in login route handles one backend. Issuing two tokens and setting two cookies in one response requires control over the `Response` object, so we write those three endpoints ourselves and use fastapi-users only for user management, register, `/users/me`, and the `current_user` dependency.
+
+**Trade-off accepted:** Refresh tokens are not rotated on every use (a security best practice). Single-use rotation would require deleting the old refresh row and issuing a new one on every `/refresh` call, which adds DB writes on every token refresh. For v1 with a 30-day window, the risk is acceptable. Add rotation in v2 if this ships to production.
+
+---
+
 ## 006 — recharts v3 (not v2)
 
 **Original scaffold had:** `recharts ^3.8.1`  
