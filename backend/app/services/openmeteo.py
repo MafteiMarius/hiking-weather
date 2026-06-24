@@ -36,16 +36,22 @@ from tenacity import (
 from app.core.config import get_settings
 from app.db.models import ForecastCache
 
-# Exactly the daily variables we need for scoring — nothing more.
 _DAILY_VARS = ",".join([
     "weather_code",
     "temperature_2m_max",
     "temperature_2m_min",
+    "apparent_temperature_min",
     "precipitation_sum",
     "precipitation_probability_max",
     "wind_speed_10m_max",
     "wind_gusts_10m_max",
+    "uv_index_max",
+    "sunrise",
+    "sunset",
 ])
+
+# Hourly variables needed for CAPE (thunderstorm) and visibility scoring.
+_HOURLY_VARS = ",".join(["cape", "visibility"])
 
 
 def _cache_key(lat: float, lng: float) -> str:
@@ -69,6 +75,7 @@ async def _fetch_forecast(
             "latitude": lat,
             "longitude": lng,
             "daily": _DAILY_VARS,
+            "hourly": _HOURLY_VARS,
             "timezone": "auto",
             "forecast_days": days,
         },

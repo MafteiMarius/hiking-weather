@@ -1,4 +1,4 @@
-export type ScoreLabel = "Excellent" | "Good" | "Fair" | "Poor" | "Dangerous";
+export type Verdict = "go" | "caution" | "no_go";
 
 export interface DayForecast {
   date: string;
@@ -6,13 +6,18 @@ export interface DayForecast {
   weather_description: string;
   temp_max_c: number;
   temp_min_c: number;
+  apparent_temp_min_c: number;
   precipitation_sum_mm: number;
   precipitation_probability_max: number;
   wind_speed_max_kmh: number;
   wind_gusts_max_kmh: number;
+  uv_index_max: number;
+  sunrise: string;
+  sunset: string;
   score: number;
-  score_label: ScoreLabel;
-  score_reason: string;
+  verdict: Verdict;
+  reasons_en: string[];
+  reasons_ro: string[];
 }
 
 export interface ForecastResponse {
