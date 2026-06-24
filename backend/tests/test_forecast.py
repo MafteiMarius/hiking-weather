@@ -16,7 +16,7 @@ FORECAST_URL = "/api/v1/forecast"
 GEOCODE_URL = "/api/v1/geocode"
 ELEVATION_URL = "/api/v1/elevation"
 
-# Minimal but valid Open-Meteo /forecast response for 1 day
+# Minimal but valid Open-Meteo /forecast response for 1 day (clear conditions)
 _OM_CLEAR_DAY = {
     "latitude": 45.5,
     "longitude": 25.3,
@@ -28,25 +28,48 @@ _OM_CLEAR_DAY = {
         "weather_code": [0],
         "temperature_2m_max": [20.0],
         "temperature_2m_min": [10.0],
+        "apparent_temperature_min": [8.0],
         "precipitation_sum": [0.0],
         "precipitation_probability_max": [0],
         "wind_speed_10m_max": [15.0],
         "wind_gusts_10m_max": [25.0],
+        "uv_index_max": [5.0],
+        "sunrise": ["2026-06-23T05:32"],
+        "sunset": ["2026-06-23T21:15"],
+    },
+    "hourly": {
+        "time": [f"2026-06-23T{h:02d}:00" for h in range(24)],
+        "cape": [0.0] * 24,
+        "visibility": [20000.0] * 24,
     },
 }
 
-# Bad weather day: thunderstorm + strong gusts
+# Bad weather day: heavy rain + dangerous gusts + high afternoon CAPE
 _OM_STORM_DAY = {
-    **_OM_CLEAR_DAY,
+    "latitude": 45.5,
+    "longitude": 25.3,
+    "elevation": 1234.0,
+    "timezone": "Europe/Bucharest",
+    "daily_units": {},
     "daily": {
         "time": ["2026-06-23"],
         "weather_code": [95],
         "temperature_2m_max": [18.0],
         "temperature_2m_min": [12.0],
+        "apparent_temperature_min": [10.0],
         "precipitation_sum": [15.0],
         "precipitation_probability_max": [90],
         "wind_speed_10m_max": [55.0],
         "wind_gusts_10m_max": [75.0],
+        "uv_index_max": [4.0],
+        "sunrise": ["2026-06-23T05:32"],
+        "sunset": ["2026-06-23T21:15"],
+    },
+    "hourly": {
+        "time": [f"2026-06-23T{h:02d}:00" for h in range(24)],
+        # CAPE spikes to 1500 J/kg in the 11:00-17:00 afternoon window
+        "cape": [0.0] * 11 + [1500.0] * 7 + [0.0] * 6,
+        "visibility": [10000.0] * 24,
     },
 }
 
@@ -85,7 +108,7 @@ async def test_forecast_clear_day_scores_100(client: AsyncClient) -> None:
     assert day["weather_code"] == 0
     assert day["weather_description"] == "Clear sky"
     assert day["score"] == 100
-    assert day["score_label"] == "Excellent"
+    assert day["verdict"] == "go"
     assert body["cached"] is False
 
 
@@ -98,8 +121,9 @@ async def test_forecast_storm_day_is_dangerous(client: AsyncClient) -> None:
 
     assert resp.status_code == 200
     day = resp.json()["days"][0]
-    assert day["score"] == 0
-    assert day["score_label"] == "Dangerous"
+    # precip 15mm (20) + gusts 75km/h (25) + CAPE 1500 (25) = 70 penalty → score 30
+    assert day["score"] == 30
+    assert day["verdict"] == "no_go"
 
 
 async def test_forecast_cache_hit_skips_http(client: AsyncClient) -> None:

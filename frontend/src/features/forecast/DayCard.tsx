@@ -42,13 +42,13 @@ export function DayCard({ day, isSelected, onClick }: DayCardProps) {
           <span className="ml-1.5 text-xs text-slate-500">{dayNum}</span>
         </div>
         <span
-          className={cn("h-2 w-2 rounded-full", SCORE_DOT[day.score_label])}
-          title={day.score_label}
+          className={cn("h-2 w-2 rounded-full", SCORE_DOT[day.verdict])}
+          title={day.verdict}
         />
       </div>
 
       {/* Score badge */}
-      <ScoreBadge label={day.score_label} score={day.score} className="w-full" />
+      <ScoreBadge verdict={day.verdict} score={day.score} className="w-full" />
 
       {/* Weather description */}
       <p className="text-xs leading-snug text-slate-400 line-clamp-2">
@@ -73,9 +73,9 @@ export function DayCard({ day, isSelected, onClick }: DayCardProps) {
         </div>
       </div>
 
-      {/* Score reason */}
+      {/* Top reason (first in list, English) */}
       <p className="mt-auto text-xs italic leading-snug text-slate-500 line-clamp-2">
-        {day.score_reason}
+        {day.reasons_en[0] ?? "Good hiking conditions"}
       </p>
     </button>
   );

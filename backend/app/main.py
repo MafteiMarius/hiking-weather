@@ -11,7 +11,9 @@ from app.core.config import get_settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import httpx
+    from app.seeds import run as seed
     app.state.http = httpx.AsyncClient()
+    await seed()
     yield
     await app.state.http.aclose()
     from app.db.session import engine

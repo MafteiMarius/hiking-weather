@@ -1,3 +1,6 @@
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [project]
 name = "hikecast-backend"
 version = "0.1.0"
