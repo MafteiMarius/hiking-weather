@@ -1,6 +1,11 @@
 @import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 
+body {
+  background-color: var(--color-stone-100);
+  color: var(--color-stone-800);
+}
+
 /* Leaflet map takes full container height */
 .leaflet-container {
   width: 100%;

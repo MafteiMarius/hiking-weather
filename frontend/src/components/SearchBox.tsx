@@ -47,7 +47,7 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
       <div className="relative">
         <Search
           size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
         />
         <input
           ref={inputRef}
@@ -60,32 +60,31 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
           }}
           onFocus={() => setOpen(true)}
           className={cn(
-            "h-9 w-64 rounded-lg border border-slate-600 bg-slate-900/90 py-2 pl-8 pr-8",
-            "text-sm text-slate-100 placeholder:text-slate-400",
-            "backdrop-blur-md",
-            "focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500",
+            "h-9 w-64 rounded-lg border border-stone-300 bg-white py-2 pl-8 pr-8 shadow-md",
+            "text-sm text-stone-900 placeholder:text-stone-400",
+            "focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600",
           )}
         />
         {isFetching && (
           <Loader2
             size={14}
-            className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-400"
+            className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-stone-400"
           />
         )}
       </div>
 
       {open && results.length > 0 && (
-        <ul className="absolute top-full left-0 mt-1 w-72 overflow-hidden rounded-lg border border-slate-600 bg-slate-900 shadow-xl">
+        <ul className="absolute top-full left-0 mt-1 w-72 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-xl">
           {results.map((r) => (
             <li key={r.id}>
               <button
                 onClick={() => handleSelect(r)}
-                className="flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-slate-700 transition-colors"
+                className="flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-stone-50 transition-colors"
               >
-                <MapPin size={14} className="mt-0.5 shrink-0 text-sky-400" />
+                <MapPin size={14} className="mt-0.5 shrink-0 text-green-700" />
                 <div>
-                  <p className="text-sm font-medium text-slate-100">{r.name}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-sm font-medium text-stone-900">{r.name}</p>
+                  <p className="text-xs text-stone-500">
                     {r.country}
                     {r.elevation_m != null && ` · ${Math.round(r.elevation_m)} m`}
                   </p>

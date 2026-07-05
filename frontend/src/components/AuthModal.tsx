@@ -1,9 +1,40 @@
 import { useState } from "react";
+import { isAxiosError } from "axios";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLogin, useRegister } from "@/features/auth/useAuth";
 import { cn } from "@/lib/utils";
+
+// fastapi-users signals errors with machine-readable codes in `detail`:
+// either a plain string ("REGISTER_USER_ALREADY_EXISTS") or an object
+// ({ code: "REGISTER_INVALID_PASSWORD", reason: "..." }). Map both to
+// something a human can act on.
+function registerErrorMessage(err: unknown): string {
+  if (isAxiosError(err)) {
+    const detail = err.response?.data?.detail;
+    if (detail === "REGISTER_USER_ALREADY_EXISTS") {
+      return "An account with this email already exists. Try signing in instead.";
+    }
+    if (typeof detail?.reason === "string") {
+      return detail.reason; // password policy failure, worded by the backend
+    }
+    if (err.response?.status === 422) {
+      return "That doesn't look like a valid email address.";
+    }
+    if (!err.response) {
+      return "Could not reach the server — is the backend running?";
+    }
+  }
+  return "Registration failed. Please try again.";
+}
+
+function loginErrorMessage(err: unknown): string {
+  if (isAxiosError(err) && !err.response) {
+    return "Could not reach the server — is the backend running?";
+  }
+  return "Invalid email or password.";
+}
 
 interface AuthModalProps {
   open: boolean;
@@ -57,8 +88,8 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         await login.mutateAsync({ email, password });
         reset();
         onClose();
-      } catch {
-        setFormError("Registration failed. That email may already be in use.");
+      } catch (err) {
+        setFormError(registerErrorMessage(err));
       }
       return;
     }
@@ -67,15 +98,15 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       await login.mutateAsync({ email, password });
       reset();
       onClose();
-    } catch {
-      setFormError("Invalid email or password.");
+    } catch (err) {
+      setFormError(loginErrorMessage(err));
     }
   }
 
   return (
     <Dialog open={open} onClose={onClose} title="HikeCast">
       {/* Tabs */}
-      <div className="mb-5 flex rounded-lg border border-slate-700 p-1">
+      <div className="mb-5 flex rounded-lg border border-stone-200 bg-stone-50 p-1">
         {(["login", "register"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -83,8 +114,8 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
             className={cn(
               "flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors",
               tab === t
-                ? "bg-sky-500 text-white"
-                : "text-slate-400 hover:text-slate-200",
+                ? "bg-white text-stone-900 shadow-sm"
+                : "text-stone-500 hover:text-stone-700",
             )}
           >
             {t === "login" ? "Sign in" : "Create account"}
@@ -94,7 +125,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">
+          <label className="mb-1 block text-xs font-medium text-stone-600">
             Email
           </label>
           <Input
@@ -107,7 +138,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">
+          <label className="mb-1 block text-xs font-medium text-stone-600">
             Password
           </label>
           <Input
@@ -121,7 +152,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         </div>
         {tab === "register" && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">
+            <label className="mb-1 block text-xs font-medium text-stone-600">
               Confirm password
             </label>
             <Input
@@ -136,7 +167,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         )}
 
         {formError && (
-          <p className="text-sm text-red-400">{formError}</p>
+          <p className="text-sm text-red-600">{formError}</p>
         )}
 
         <Button type="submit" className="mt-2 w-full" disabled={isPending}>
@@ -148,13 +179,13 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-xs text-slate-500">
+      <p className="mt-4 text-center text-xs text-stone-500">
         {tab === "login" ? (
           <>
             No account?{" "}
             <button
               onClick={() => switchTab("register")}
-              className="text-sky-400 hover:underline"
+              className="font-medium text-green-700 hover:underline"
             >
               Sign up
             </button>
@@ -164,7 +195,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
             Already have one?{" "}
             <button
               onClick={() => switchTab("login")}
-              className="text-sky-400 hover:underline"
+              className="font-medium text-green-700 hover:underline"
             >
               Sign in
             </button>

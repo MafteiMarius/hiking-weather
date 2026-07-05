@@ -16,20 +16,20 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex shrink-0 items-center justify-between border-b border-slate-700 bg-slate-900 px-4 h-12">
+      <header className="flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 h-12">
         <div className="flex items-center gap-2">
-          <Mountain size={18} className="text-sky-400" />
-          <span className="text-sm font-semibold tracking-tight text-slate-100">
+          <Mountain size={18} className="text-green-700" />
+          <span className="text-sm font-semibold tracking-tight text-stone-900">
             HikeCast
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {meLoading ? (
-            <Loader2 size={16} className="animate-spin text-slate-400" />
+            <Loader2 size={16} className="animate-spin text-stone-400" />
           ) : me ? (
             <>
-              <span className="hidden text-xs text-slate-400 sm:block">
+              <span className="hidden text-xs text-stone-500 sm:block">
                 {me.email}
               </span>
               <Button

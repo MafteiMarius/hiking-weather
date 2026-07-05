@@ -47,9 +47,21 @@ _DAILY_VARS = ",".join([
     "wind_gusts_10m_max",
 ])
 
+# Hourly counterparts for the drill-down chart — same factors the score uses,
+# so a hiker can see *when* in the day the risk concentrates.
+_HOURLY_VARS = ",".join([
+    "temperature_2m",
+    "precipitation",
+    "precipitation_probability",
+    "wind_gusts_10m",
+    "weather_code",
+])
 
-def _cache_key(lat: float, lng: float) -> str:
-    raw = f"{round(lat, 2)}:{round(lng, 2)}"
+
+def _cache_key(lat: float, lng: float, days: int) -> str:
+    # days is part of the key: a cached 1-day payload must never be served
+    # for a 7-day request (they share the grid cell but not the horizon).
+    raw = f"{round(lat, 2)}:{round(lng, 2)}:{days}"
     return hashlib.sha1(raw.encode()).hexdigest()  # 40 hex chars
 
 
@@ -69,6 +81,7 @@ async def _fetch_forecast(
             "latitude": lat,
             "longitude": lng,
             "daily": _DAILY_VARS,
+            "hourly": _HOURLY_VARS,
             "timezone": "auto",
             "forecast_days": days,
         },
@@ -90,7 +103,7 @@ async def get_forecast(
     The raw payload is stored in JSONB so scoring logic can be changed
     without re-fetching. Score is always computed fresh on read.
     """
-    key = _cache_key(lat, lng)
+    key = _cache_key(lat, lng, days)
     now = datetime.now(timezone.utc)
 
     # --- Cache lookup ---

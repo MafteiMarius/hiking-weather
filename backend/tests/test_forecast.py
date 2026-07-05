@@ -16,7 +16,8 @@ FORECAST_URL = "/api/v1/forecast"
 GEOCODE_URL = "/api/v1/geocode"
 ELEVATION_URL = "/api/v1/elevation"
 
-# Minimal but valid Open-Meteo /forecast response for 1 day
+# Minimal but valid Open-Meteo /forecast response for 1 day (2 hourly steps —
+# the real API returns 24/day, the parser doesn't care)
 _OM_CLEAR_DAY = {
     "latitude": 45.5,
     "longitude": 25.3,
@@ -32,6 +33,14 @@ _OM_CLEAR_DAY = {
         "precipitation_probability_max": [0],
         "wind_speed_10m_max": [15.0],
         "wind_gusts_10m_max": [25.0],
+    },
+    "hourly": {
+        "time": ["2026-06-23T00:00", "2026-06-23T01:00"],
+        "temperature_2m": [11.5, 10.9],
+        "precipitation": [0.0, 0.2],
+        "precipitation_probability": [0, 10],
+        "wind_gusts_10m": [22.0, 24.5],
+        "weather_code": [0, 1],
     },
 }
 
@@ -88,6 +97,29 @@ async def test_forecast_clear_day_scores_100(client: AsyncClient) -> None:
     assert day["score_label"] == "Excellent"
     assert body["cached"] is False
 
+    assert len(body["hours"]) == 2
+    hour = body["hours"][1]
+    assert hour["time"] == "2026-06-23T01:00"
+    assert hour["temp_c"] == 10.9
+    assert hour["precipitation_mm"] == 0.2
+    assert hour["precipitation_probability"] == 10
+    assert hour["wind_gusts_kmh"] == 24.5
+    assert hour["weather_code"] == 1
+
+
+async def test_forecast_tolerates_payload_without_hourly(client: AsyncClient) -> None:
+    """Cache entries written before hourly support lack the block — the
+    endpoint must serve them with hours=[] instead of crashing."""
+    legacy_payload = {k: v for k, v in _OM_CLEAR_DAY.items() if k != "hourly"}
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=legacy_payload)
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+
+    assert resp.status_code == 200
+    assert resp.json()["hours"] == []
+
 
 async def test_forecast_storm_day_is_dangerous(client: AsyncClient) -> None:
     with respx.mock:
@@ -117,6 +149,21 @@ async def test_forecast_cache_hit_skips_http(client: AsyncClient) -> None:
     assert resp2.status_code == 200
     assert resp2.json()["cached"] is True
     assert route.call_count == 1  # only one real HTTP call
+
+
+async def test_forecast_cache_is_per_horizon(client: AsyncClient) -> None:
+    """A cached 1-day payload must not be served for a 7-day request —
+    `days` is part of the cache key."""
+    with respx.mock:
+        route = respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_CLEAR_DAY)
+        )
+        await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+        resp = await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 7})
+
+    assert resp.status_code == 200
+    assert resp.json()["cached"] is False  # different horizon → fresh fetch
+    assert route.call_count == 2
 
 
 async def test_forecast_invalid_lat_returns_422(client: AsyncClient) -> None:

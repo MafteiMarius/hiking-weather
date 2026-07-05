@@ -27,7 +27,7 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
     <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       {/* Backdrop — z-[2000] clears Leaflet's highest layer (z ~700) */}
       <div
-        className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm"
+        className="absolute inset-0 bg-stone-900/40"
         onClick={onClose}
         aria-hidden
       />
@@ -37,18 +37,18 @@ export function Dialog({ open, onClose, title, children, className }: DialogProp
         aria-modal
         aria-labelledby="dialog-title"
         className={cn(
-          "relative z-10 w-full max-w-md rounded-2xl border border-slate-700",
-          "bg-slate-900 shadow-2xl",
+          "relative z-10 w-full max-w-md rounded-2xl border border-stone-200",
+          "bg-white shadow-2xl",
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-          <h2 id="dialog-title" className="text-lg font-semibold text-slate-100">
+        <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+          <h2 id="dialog-title" className="text-lg font-semibold text-stone-900">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+            className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
             aria-label="Close"
           >
             <X size={18} />

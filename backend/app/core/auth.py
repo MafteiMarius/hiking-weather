@@ -23,7 +23,8 @@ _settings = get_settings()
 
 # ── Argon2id password hashing ─────────────────────────────────────────────────
 # Replaces fastapi-users' default bcrypt with the PHC winner.
-_password_helper = PasswordHelper(PasswordHash((Argon2Hasher(),)))
+# Public: the demo seed (app.seeds.demo) hashes with the same helper.
+password_helper = PasswordHelper(PasswordHash((Argon2Hasher(),)))
 
 
 # ── User DB adapter ───────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 async def get_user_manager(
     user_db: SQLAlchemyUserDatabase[User, uuid.UUID] = Depends(get_user_db),
 ) -> AsyncGenerator[UserManager, None]:
-    yield UserManager(user_db, password_helper=_password_helper)
+    yield UserManager(user_db, password_helper=password_helper)
 
 
 # ── Access-token backend (short-lived JWT in httpOnly cookie) ─────────────────

@@ -15,8 +15,8 @@ export default defineConfig({
         name: "HikeCast",
         short_name: "HikeCast",
         description: "Hiker-tuned 7-day forecasts for the Carpathians",
-        theme_color: "#0f172a", // Tailwind slate-900
-        background_color: "#0f172a",
+        theme_color: "#15803d", // Tailwind green-700
+        background_color: "#f5f5f4", // Tailwind stone-100
         display: "standalone",
         icons: [
           { src: "icons.svg", sizes: "any", type: "image/svg+xml" },
@@ -49,6 +49,25 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the heavyweights into parallel-loadable, independently-cached
+        // chunks — the app code changes often, leaflet/recharts almost never.
+        manualChunks: {
+          "react-vendor": [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "@tanstack/react-query",
+            "axios",
+          ],
+          leaflet: ["leaflet", "react-leaflet"],
+          recharts: ["recharts"],
+        },
+      },
     },
   },
   server: {

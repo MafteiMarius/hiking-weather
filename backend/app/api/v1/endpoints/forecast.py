@@ -12,6 +12,7 @@ from app.schemas.forecast import (
     ForecastResponse,
     GeocodeResponse,
     GeocodeResult,
+    HourForecast,
 )
 from app.services.openmeteo import geocode, get_elevation, get_forecast
 from app.services.scoring import WMO_DESCRIPTIONS, score_day
@@ -69,12 +70,28 @@ async def forecast_endpoint(
             )
         )
 
+    # Hourly block is absent from cache entries written before hourly support;
+    # serve them with an empty list rather than refetching (30-min TTL).
+    hourly = payload.get("hourly") or {}
+    hours = [
+        HourForecast(
+            time=time,
+            temp_c=float(hourly["temperature_2m"][i] or 0),
+            precipitation_mm=float(hourly["precipitation"][i] or 0),
+            precipitation_probability=int(hourly["precipitation_probability"][i] or 0),
+            wind_gusts_kmh=float(hourly["wind_gusts_10m"][i] or 0),
+            weather_code=int(hourly["weather_code"][i] or 0),
+        )
+        for i, time in enumerate(hourly.get("time", []))
+    ]
+
     return ForecastResponse(
         lat=float(payload["latitude"]),
         lng=float(payload["longitude"]),
         elevation_m=float(payload.get("elevation") or 0),
         timezone=str(payload.get("timezone", "UTC")),
         days=scored_days,
+        hours=hours,
         cached=cached,
     )
 

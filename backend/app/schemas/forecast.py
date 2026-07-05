@@ -18,12 +18,24 @@ class DayForecast(BaseModel):
     score_reason: str
 
 
+class HourForecast(BaseModel):
+    time: str                           # "2026-06-23T14:00" (location-local)
+    temp_c: float
+    precipitation_mm: float
+    precipitation_probability: int      # 0-100 %
+    wind_gusts_kmh: float
+    weather_code: int
+
+
 class ForecastResponse(BaseModel):
     lat: float
     lng: float
     elevation_m: float
     timezone: str
     days: list[DayForecast]
+    # Empty when serving a cached payload fetched before hourly support existed
+    # (those entries age out within the 30-minute TTL).
+    hours: list[HourForecast] = []
     cached: bool                        # True when served from forecast_cache table
 
 

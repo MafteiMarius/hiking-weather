@@ -15,13 +15,41 @@ export interface DayForecast {
   score_reason: string;
 }
 
+export interface HourForecast {
+  time: string; // "2026-06-23T14:00" (location-local)
+  temp_c: number;
+  precipitation_mm: number;
+  precipitation_probability: number;
+  wind_gusts_kmh: number;
+  weather_code: number;
+}
+
 export interface ForecastResponse {
   lat: number;
   lng: number;
   elevation_m: number;
   timezone: string;
   days: DayForecast[];
+  hours: HourForecast[];
   cached: boolean;
+}
+
+export interface SavedLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  elevation_m: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface SavedLocationCreate {
+  name: string;
+  lat: number;
+  lng: number;
+  elevation_m?: number | null;
+  notes?: string | null;
 }
 
 export interface GeocodeResult {

@@ -1,4 +1,8 @@
 frontend/node_modules
+frontend/dist
 backend/venv
+backend/*.egg-info
+backend/.cache.sqlite
+backend/.pytest_cache
 __pycache__
 .env

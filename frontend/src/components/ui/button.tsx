@@ -7,10 +7,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  primary: "bg-sky-500 hover:bg-sky-400 text-white shadow-sm",
-  ghost: "hover:bg-slate-700 text-slate-300 hover:text-white",
-  outline: "border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white",
-  danger: "bg-red-600 hover:bg-red-500 text-white",
+  primary: "bg-green-700 hover:bg-green-800 text-white shadow-sm",
+  ghost: "hover:bg-stone-100 text-stone-600 hover:text-stone-900",
+  outline: "border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 hover:text-stone-900",
+  danger: "bg-red-600 hover:bg-red-700 text-white",
 };
 
 const sizes = {
@@ -26,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors",
         "disabled:opacity-50 disabled:cursor-not-allowed",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600",
         variants[variant],
         sizes[size],
         className,
