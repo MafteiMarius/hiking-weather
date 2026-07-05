@@ -27,7 +27,12 @@ export function DayCard({ day, isSelected, onClick }: DayCardProps) {
     <button
       onClick={onClick}
       className={cn(
-        "flex h-full w-44 shrink-0 flex-col gap-3 rounded-xl border p-3 text-left transition-all",
+        // Fixed width + horizontal scroll on small screens; from lg up the
+        // 7 cards grow to fill the full row so wide monitors have no dead
+        // space. Longhand grow/basis (not the flex-1 shorthand) so shrink-0
+        // can't be clobbered by shorthand-vs-longhand cascade ordering.
+        "flex h-full w-40 shrink-0 flex-col gap-3 rounded-xl border p-3 text-left transition-all",
+        "sm:w-44 lg:w-auto lg:grow lg:basis-0",
         "hover:shadow-md",
         isSelected
           ? "border-green-600 bg-white shadow-md ring-1 ring-green-600/40"

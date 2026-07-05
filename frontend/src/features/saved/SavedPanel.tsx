@@ -55,7 +55,7 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
       <div className="flex gap-2">
         <Button size="sm" variant="outline" onClick={startSaving} title="Save this spot">
           <Bookmark size={14} />
-          Save spot
+          <span className="hidden sm:inline">Save spot</span>
         </Button>
         <Button
           size="sm"
@@ -65,8 +65,10 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
             setSaving(false);
           }}
           className={cn(open && "bg-stone-100")}
+          title="Saved locations"
         >
-          Saved
+          <Bookmark size={14} className="fill-current sm:hidden" />
+          <span className="hidden sm:inline">Saved</span>
           {locations && locations.length > 0 && (
             <span className="rounded-full bg-green-700 px-1.5 text-xs text-white">
               {locations.length}

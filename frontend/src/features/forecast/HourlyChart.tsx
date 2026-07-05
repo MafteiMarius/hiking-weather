@@ -46,7 +46,7 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
   }
 
   return (
-    <div className="h-44 w-full">
+    <div className="h-32 w-full sm:h-36 lg:h-44">
       <ResponsiveContainer>
         <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
           <CartesianGrid stroke="#e7e5e4" strokeDasharray="3 3" vertical={false} />

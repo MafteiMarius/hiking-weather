@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # Cache
     forecast_cache_ttl_minutes: int = 30
     climatology_years: int = 10
+    climatology_cache_days: int = 30
+
+    # AI (optional — endpoints return 503 when the key is not configured)
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-4-8"
 
 
 @lru_cache

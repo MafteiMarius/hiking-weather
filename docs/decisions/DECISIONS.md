@@ -95,6 +95,63 @@ spec. Flag on Day 16 if Railway's build image doesn't yet carry 3.12.
 
 ---
 
+## 011 — Climatology: ERA5 weather codes undercount thunderstorms
+
+**Observed:** For Bucegi in July — prime Carpathian thunderstorm season — ERA5
+daily `weather_code` yields 0% thunderstorm days. ERA5 is a reanalysis (a model
+re-run over observations); its daily code is derived from model precipitation
+fields and rarely produces the convective codes (95/96/99).
+
+**Decision:** Keep `thunderstorm_pct` in the schema and warning logic (it may
+fire in other datasets/regions and costs nothing), but rely on the other
+metrics to carry the instability signal: wet-day frequency, 90th-percentile
+gust, and a volatility index. Volatility is defined as the share of
+consecutive-day transitions that flip between wet (≥ 1 mm) and dry — a proxy
+for "forecasts age fast here". Warning thresholds: thunder ≥ 20%, wet days
+≥ 50%, p90 gust ≥ 70 km/h, volatility ≥ 40%. Revisit with CAPE-based hourly
+archive data if the warning proves too quiet in storm season.
+
+---
+
+## 012 — AI integration: backend-only Claude calls, optional by config
+
+**Choice:** AI features (packing advice, more later) run exclusively through the
+backend (`services/ai.py`, Anthropic Python SDK). The frontend calls
+`POST /api/v1/ai/*` and never touches Anthropic directly.
+
+**Why backend-only:** the API key must not ship to browsers; the backend already
+holds the forecast/climatology context so prompts stay server-side; auth-gating
+(login required) prevents anonymous visitors from spending money.
+
+**Why optional:** `ANTHROPIC_API_KEY` unset → endpoints return 503 and the UI
+shows a friendly message. The app must stay fully usable (and deployable free)
+without any AI dependency.
+
+**Structured outputs, not prose parsing:** `client.messages.parse()` with a
+Pydantic `output_format` guarantees a schema-valid `EquipmentPlan` — no JSON
+repair. Model is configurable (`ANTHROPIC_MODEL`, default `claude-opus-4-8`);
+the static system prompt carries a `cache_control` breakpoint so Anthropic's
+prompt caching reduces per-call cost. Note: the current Claude API uses
+adaptive thinking (`{"type": "adaptive"}`) — `budget_tokens`, `temperature`
+etc. are removed on Opus 4.7+ and will 400.
+
+**Trade-off accepted:** no response caching per (location, date) in v1 — every
+button press is one paid call. Add a small DB cache if usage grows.
+
+---
+
+## 013 — Trail catalogue data is drafted, not surveyed
+
+**What:** the 25 seed trails (`app/seeds/trails.py`) carry coordinates,
+distances, durations, and elevation figures drafted from general route
+knowledge. Plausible, but NOT verified against maps or GPS tracks.
+
+**Decision:** ship the feature now to unblock UI/forecast integration; verify
+every figure against Munții Noștri / OpenTopoMap before promoting the data as
+trustworthy. The seed file and README both carry the warning.
+
+---
+
 ## 006 — recharts v3 (not v2)
 
 **Original scaffold had:** `recharts ^3.8.1`  

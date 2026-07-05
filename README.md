@@ -25,14 +25,23 @@ Work in progress. What works today:
   access JWT + revocable DB-backed refresh token, silent refresh in the UI).
 - **Saved locations** — bookmark your spots (stored as PostGIS points) and
   jump back to them from any device.
+- **Historical instability warning** — 10 years of ERA5 reanalysis data,
+  aggregated over the same ISO week of the year, flag locations with a track
+  record of bad weather even when the forecast looks fine.
+- **Trail catalogue** — 25 curated routes in Bucegi, Piatra Craiului, Făgăraș,
+  Retezat, Apuseni, Ceahlău, Ciucaș, and Iezer-Păpușa; pick one to fly the map
+  to its trailhead. *(Route data is drafted, not surveyed — verify against
+  official maps before hiking.)*
+- **AI packing advice** *(optional)* — with an Anthropic API key configured,
+  signed-in users get a Claude-generated equipment list for the selected day,
+  grounded in the hourly forecast and the location's historical pattern.
 - **Forecast caching** — the backend fetches Open-Meteo once per ~1 km grid
   cell and caches the payload in Postgres for 30 minutes; the frontend never
   talks to Open-Meteo directly.
 - **Installable PWA scaffold** — map tiles and the last forecasts are cached
   by a service worker.
 
-Planned next (see Roadmap): trail catalogue, historical instability warnings
-from ERA5 reanalysis, personalised recommendations, Romanian UI.
+Planned next (see Roadmap): personalised recommendations, Romanian UI.
 
 ## Setup guide
 
@@ -101,6 +110,7 @@ docker exec hiking-weather-db-1 psql -U hikecast -c "CREATE EXTENSION IF NOT EXI
 docker exec hiking-weather-db-1 psql -U hikecast -c "CREATE EXTENSION IF NOT EXISTS postgis;" hikecast_test
 
 python -m app.seeds.demo
+python -m app.seeds.trails
 ```
 
 Verify everything works, then start the dev server:
@@ -200,11 +210,11 @@ Railway for the backend, Vercel for the frontend.
 ```
 backend/
   app/
-    api/v1/        routes (auth, profile, forecast, geocode, elevation, locations)
+    api/v1/        routes (auth, profile, forecast, geocode, elevation, locations, climatology, trails, ai)
     core/          config, auth wiring, refresh-token helpers
-    services/      openmeteo client + cache, scoring
+    services/      openmeteo client + cache, scoring, climatology, ai (Claude)
     db/            models, session
-    seeds/         demo account
+    seeds/         demo account, trail catalogue
   alembic/         migrations
   tests/           pytest (scoring, forecast + cache, auth flow, saved locations)
 frontend/
@@ -224,13 +234,13 @@ cd backend && pytest        # needs the db container + hikecast_test database
 ```
 
 Covered: the safety score (pure unit tests), the Open-Meteo client with
-cache-hit proof (HTTP mocked with respx), and the full auth flow.
+cache-hit proof (HTTP mocked with respx), the full auth flow, saved
+locations (incl. ownership), and the climatology aggregation math.
 
 ## Roadmap
 
-- Trail catalogue of curated Carpathian routes (Bucegi, Piatra Craiului,
-  Fagaras, Retezat, …).
-- Historical instability warning from 10 years of ERA5 reanalysis data.
+- Trail route data verification against official maps (current figures are
+  drafted placeholders).
 - Personalised recommendations (home location + experience level).
 - Romanian UI (i18n is wired, strings not yet translated).
 - ANM nowcasting alerts overlay, GPX import, multi-point trail forecasts.

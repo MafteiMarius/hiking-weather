@@ -60,7 +60,9 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
           }}
           onFocus={() => setOpen(true)}
           className={cn(
-            "h-9 w-64 rounded-lg border border-stone-300 bg-white py-2 pl-8 pr-8 shadow-md",
+            // Narrower on phones so it doesn't collide with the saved-spots
+            // buttons in the opposite corner
+            "h-9 w-44 rounded-lg border border-stone-300 bg-white py-2 pl-8 pr-8 shadow-md sm:w-64",
             "text-sm text-stone-900 placeholder:text-stone-400",
             "focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600",
           )}
@@ -74,7 +76,7 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
       </div>
 
       {open && results.length > 0 && (
-        <ul className="absolute top-full left-0 mt-1 w-72 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-xl">
+        <ul className="absolute top-full left-0 mt-1 w-64 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-xl sm:w-72">
           {results.map((r) => (
             <li key={r.id}>
               <button

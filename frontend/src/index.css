@@ -6,6 +6,12 @@ body {
   color: var(--color-stone-800);
 }
 
+/* Tailwind v4 removed the v3 preflight rule that gave buttons a pointer cursor */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
 /* Leaflet map takes full container height */
 .leaflet-container {
   width: 100%;

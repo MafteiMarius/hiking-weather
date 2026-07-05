@@ -1,9 +1,19 @@
 import { useState, useCallback, lazy, Suspense } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Loader2, Mountain, Navigation2 } from "lucide-react";
+import {
+  Backpack,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Mountain,
+  Navigation2,
+} from "lucide-react";
 import { useForecast } from "@/features/forecast/useForecast";
 import { DayCard } from "@/features/forecast/DayCard";
+import { InstabilityBanner } from "@/features/forecast/InstabilityBanner";
+import { PackingPanel } from "@/features/forecast/PackingPanel";
+import { TrailsPanel } from "@/features/trails/TrailsPanel";
 
 // Lazy: recharts is ~400 kB minified and only needed once a day card is
 // clicked — no reason to ship it on first paint.
@@ -13,7 +23,7 @@ const HourlyChart = lazy(() =>
 import { SavedPanel } from "@/features/saved/SavedPanel";
 import { useMe } from "@/features/auth/useAuth";
 import { SearchBox } from "@/components/SearchBox";
-import type { GeocodeResult, SavedLocation } from "@/types/api";
+import type { GeocodeResult, SavedLocation, Trail } from "@/types/api";
 
 // Default: Bucegi massif — icon Carpathian location
 const DEFAULT_LAT = 45.36;
@@ -57,6 +67,9 @@ export function ForecastPage() {
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
   // null = hourly chart collapsed; a number = that day's chart is open
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // Whole bottom bar folded down to a slim header so the map fills the screen
+  const [stripCollapsed, setStripCollapsed] = useState(false);
+  const [packingOpen, setPackingOpen] = useState(false);
   // Last picked place name — prefills the "save spot" form
   const [placeName, setPlaceName] = useState("");
 
@@ -87,6 +100,14 @@ export function ForecastPage() {
     setPlaceName(loc.name);
   }, []);
 
+  const handleTrailSelect = useCallback((trail: Trail) => {
+    setLat(trail.start_lat);
+    setLng(trail.start_lng);
+    setFlyTarget([trail.start_lat, trail.start_lng]);
+    setSelectedDay(null);
+    setPlaceName(trail.name);
+  }, []);
+
   const locationLabel = forecast
     ? `${forecast.lat.toFixed(2)}°N, ${forecast.lng.toFixed(2)}°E · ${Math.round(forecast.elevation_m)} m`
     : `${lat.toFixed(2)}°N, ${lng.toFixed(2)}°E`;
@@ -114,9 +135,10 @@ export function ForecastPage() {
           <FlyToController target={flyTarget} />
         </MapContainer>
 
-        {/* Search box overlay — sits above the map */}
-        <div className="absolute top-3 left-3 z-[500]">
+        {/* Search + trails overlays — sit above the map */}
+        <div className="absolute top-3 left-3 z-[500] flex flex-col gap-2">
           <SearchBox onSelect={handleGeocodeSelect} />
+          <TrailsPanel onSelect={handleTrailSelect} />
         </div>
 
         {/* Saved locations overlay — signed-in users only */}
@@ -143,63 +165,111 @@ export function ForecastPage() {
 
       {/* ── 7-day strip ──────────────────────────────────────────────────── */}
       <div className="shrink-0 border-t border-stone-200 bg-stone-50">
-        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+        {/* The instability warning stays visible even when collapsed — safety
+            info shouldn't fold away with the convenience UI. */}
+        <InstabilityBanner lat={lat} lng={lng} />
+        <div className="flex items-center gap-2 px-4 py-2">
           <Mountain size={14} className="text-green-700" />
           <span className="text-xs font-semibold uppercase tracking-widest text-stone-500">
             7-Day Forecast
           </span>
-          {openDay && (
-            <span className="text-xs text-stone-400">
-              — hourly for {openDay.date}
-            </span>
+          {!stripCollapsed && openDay && (
+            <>
+              <span className="text-xs text-stone-400">
+                — hourly for {openDay.date}
+              </span>
+              {me && (
+                <button
+                  onClick={() => setPackingOpen(true)}
+                  className="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors"
+                >
+                  <Backpack size={12} className="text-green-700" />
+                  What to pack?
+                </button>
+              )}
+            </>
           )}
-          {forecast?.cached && (
+          {forecast?.cached && !stripCollapsed && (
             <span className="ml-auto text-xs text-stone-400">cached</span>
           )}
+          <button
+            onClick={() => setStripCollapsed(!stripCollapsed)}
+            className={cnStripToggle(forecast?.cached && !stripCollapsed)}
+            aria-label={stripCollapsed ? "Expand forecast" : "Collapse forecast"}
+          >
+            {stripCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
         </div>
 
-        {/* Hourly drill-down — opens when a day card is clicked */}
-        {forecast && openDay && (
-          <div className="border-b border-stone-200 px-4 pb-2">
-            <Suspense
-              fallback={
-                <div className="flex h-44 items-center justify-center">
-                  <Loader2 size={20} className="animate-spin text-stone-400" />
-                </div>
-              }
-            >
-              <HourlyChart hours={forecast.hours} date={openDay.date} />
-            </Suspense>
-          </div>
-        )}
+        {!stripCollapsed && (
+          // Cap the expandable area at ~45% of the viewport so the map always
+          // keeps the majority of the screen; overflow scrolls inside the strip.
+          <div className="max-h-[45vh] overflow-y-auto overscroll-contain">
+            {/* Hourly drill-down — opens when a day card is clicked */}
+            {forecast && openDay && (
+              <div className="border-b border-stone-200 px-4 pb-2">
+                <Suspense
+                  fallback={
+                    <div className="flex h-44 items-center justify-center">
+                      <Loader2 size={20} className="animate-spin text-stone-400" />
+                    </div>
+                  }
+                >
+                  <HourlyChart hours={forecast.hours} date={openDay.date} />
+                </Suspense>
+              </div>
+            )}
 
-        {isLoading && (
-          <div className="flex h-44 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-700 border-t-transparent" />
-          </div>
-        )}
+            {isLoading && (
+              <div className="flex h-44 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-green-700 border-t-transparent" />
+              </div>
+            )}
 
-        {isError && (
-          <div className="flex h-44 items-center justify-center text-sm text-stone-500">
-            Could not load forecast — check your connection.
-          </div>
-        )}
+            {isError && (
+              <div className="flex h-44 items-center justify-center text-sm text-stone-500">
+                Could not load forecast — check your connection.
+              </div>
+            )}
 
-        {forecast && (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-4 pt-2">
-            {forecast.days.map((day, i) => (
-              <DayCard
-                key={day.date}
-                day={day}
-                isSelected={i === selectedDay}
-                onClick={() =>
-                  setSelectedDay(selectedDay === i ? null : i)
-                }
-              />
-            ))}
+            {forecast && (
+              <div className="flex gap-2 overflow-x-auto px-4 pb-4 pt-2">
+                {forecast.days.map((day, i) => (
+                  <DayCard
+                    key={day.date}
+                    day={day}
+                    isSelected={i === selectedDay}
+                    onClick={() =>
+                      setSelectedDay(selectedDay === i ? null : i)
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* AI packing advice — remounts per day so each opens fresh */}
+      {openDay && (
+        <PackingPanel
+          key={openDay.date}
+          lat={lat}
+          lng={lng}
+          date={openDay.date}
+          open={packingOpen}
+          onClose={() => setPackingOpen(false)}
+        />
+      )}
     </div>
   );
+}
+
+// The chevron hugs the right edge; when the "cached" hint is showing it
+// already claimed ml-auto, so only add it ourselves when absent.
+function cnStripToggle(cachedShown: boolean | undefined): string {
+  return [
+    "rounded p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700 transition-colors",
+    cachedShown ? "" : "ml-auto",
+  ].join(" ");
 }

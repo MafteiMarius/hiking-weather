@@ -71,6 +71,8 @@ export default defineConfig({
     },
   },
   server: {
+    // Honor an externally assigned port (e.g. preview tooling); default 5173
+    port: process.env.PORT ? Number(process.env.PORT) : undefined,
     proxy: {
       "/api": "http://localhost:8000",
     },
