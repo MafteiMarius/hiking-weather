@@ -5,6 +5,7 @@ import {
   Backpack,
   ChevronDown,
   ChevronUp,
+  Compass,
   Loader2,
   Mountain,
   Navigation2,
@@ -13,6 +14,7 @@ import { useForecast } from "@/features/forecast/useForecast";
 import { DayCard } from "@/features/forecast/DayCard";
 import { InstabilityBanner } from "@/features/forecast/InstabilityBanner";
 import { PackingPanel } from "@/features/forecast/PackingPanel";
+import { RecommendPanel } from "@/features/trails/RecommendPanel";
 import { TrailsPanel } from "@/features/trails/TrailsPanel";
 
 // Lazy: recharts is ~400 kB minified and only needed once a day card is
@@ -70,6 +72,7 @@ export function ForecastPage() {
   // Whole bottom bar folded down to a slim header so the map fills the screen
   const [stripCollapsed, setStripCollapsed] = useState(false);
   const [packingOpen, setPackingOpen] = useState(false);
+  const [recsOpen, setRecsOpen] = useState(false);
   // Last picked place name — prefills the "save spot" form
   const [placeName, setPlaceName] = useState("");
 
@@ -114,6 +117,9 @@ export function ForecastPage() {
 
   const openDay =
     forecast && selectedDay !== null ? forecast.days[selectedDay] : null;
+
+  // Recommendations rank the selected day, or today when nothing is open
+  const recsDate = openDay?.date ?? forecast?.days[0]?.date;
 
   return (
     <div className="flex h-full flex-col">
@@ -173,6 +179,15 @@ export function ForecastPage() {
           <span className="text-xs font-semibold uppercase tracking-widest text-stone-500">
             7-Day Forecast
           </span>
+          {me && recsDate && !stripCollapsed && (
+            <button
+              onClick={() => setRecsOpen(true)}
+              className="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors"
+            >
+              <Compass size={12} className="text-green-700" />
+              Best trails
+            </button>
+          )}
           {!stripCollapsed && openDay && (
             <>
               <span className="text-xs text-stone-400">
@@ -249,6 +264,16 @@ export function ForecastPage() {
           </div>
         )}
       </div>
+
+      {/* Personalised trail ranking for the selected (or first) day */}
+      {recsDate && (
+        <RecommendPanel
+          date={recsDate}
+          open={recsOpen}
+          onClose={() => setRecsOpen(false)}
+          onSelect={handleTrailSelect}
+        />
+      )}
 
       {/* AI packing advice — remounts per day so each opens fresh */}
       {openDay && (

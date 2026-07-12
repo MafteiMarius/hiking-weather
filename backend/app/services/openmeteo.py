@@ -153,6 +153,100 @@ async def get_forecast(
     wait=wait_exponential(multiplier=1, min=1, max=10),
     reraise=True,
 )
+async def _fetch_forecast_bulk(
+    client: httpx.AsyncClient, points: list[tuple[float, float]], days: int
+) -> list[dict[str, Any]]:
+    """One request for many points — Open-Meteo accepts comma-separated
+    coordinate lists and returns one payload per point (a bare object when
+    only one point is asked for)."""
+    settings = get_settings()
+    r = await client.get(
+        f"{settings.open_meteo_base_url}/forecast",
+        params={
+            "latitude": ",".join(str(lat) for lat, _ in points),
+            "longitude": ",".join(str(lng) for _, lng in points),
+            "daily": _DAILY_VARS,
+            "hourly": _HOURLY_VARS,
+            "timezone": "auto",
+            "forecast_days": days,
+        },
+        timeout=20.0,
+    )
+    r.raise_for_status()
+    data = r.json()
+    return data if isinstance(data, list) else [data]
+
+
+async def get_forecasts_bulk(
+    points: list[tuple[float, float]],
+    days: int,
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+) -> list[dict[str, Any]]:
+    """Forecast payloads for many points, in input order.
+
+    Cache-aware: cached grid cells are served from Postgres; ALL misses go
+    upstream in a single bulk request (25 trails ≠ 25 round trips). Fetched
+    payloads are upserted under the same per-cell keys `get_forecast` uses,
+    so trail recommendations and map clicks share one cache.
+    """
+    now = datetime.now(timezone.utc)
+    keys = [_cache_key(lat, lng, days) for lat, lng in points]
+
+    result = await session.execute(
+        select(ForecastCache).where(
+            ForecastCache.cache_key.in_(set(keys)),
+            ForecastCache.expires_at > now,
+        )
+    )
+    payloads: dict[str, dict[str, Any]] = {
+        row.cache_key: row.payload for row in result.scalars()
+    }
+
+    # Misses, deduped by cell (nearby summits can share a grid cell).
+    misses: dict[str, tuple[float, float]] = {}
+    for key, point in zip(keys, points):
+        if key not in payloads and key not in misses:
+            misses[key] = point
+
+    if misses:
+        fetched = await _fetch_forecast_bulk(client, list(misses.values()), days)
+        if len(fetched) != len(misses):
+            # zip() would silently pair wrong payloads with wrong cells
+            raise ValueError(
+                f"Open-Meteo returned {len(fetched)} payloads for {len(misses)} points"
+            )
+        settings = get_settings()
+        expires_at = now + timedelta(minutes=settings.forecast_cache_ttl_minutes)
+        for key, payload in zip(misses, fetched):
+            await session.execute(
+                pg_insert(ForecastCache)
+                .values(
+                    cache_key=key,
+                    lat=payload["latitude"],
+                    lng=payload["longitude"],
+                    elevation_m=int(payload.get("elevation") or 0) or None,
+                    payload=payload,
+                    fetched_at=now,
+                    expires_at=expires_at,
+                )
+                .on_conflict_do_update(
+                    index_elements=["cache_key"],
+                    set_={"payload": payload, "fetched_at": now, "expires_at": expires_at},
+                )
+            )
+            payloads[key] = payload
+        await session.commit()
+
+    return [payloads[key] for key in keys]
+
+
+@retry(
+    retry=retry_if_exception_type((httpx.NetworkError, httpx.TimeoutException)),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    reraise=True,
+)
 async def geocode(q: str, client: httpx.AsyncClient) -> dict[str, Any]:
     settings = get_settings()
     r = await client.get(

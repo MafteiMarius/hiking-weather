@@ -112,6 +112,28 @@ export interface EquipmentPlan {
   warnings: string[];
 }
 
+export interface RecommendationItem {
+  trail: Trail;
+  rank_score: number; // weather score minus personal penalties
+  weather_score: number;
+  weather_label: ScoreLabel;
+  weather_description: string;
+  weather_reason: string;
+  temp_max_c: number;
+  temp_min_c: number;
+  precipitation_sum_mm: number;
+  wind_gusts_max_kmh: number;
+  difficulty_penalty: number;
+  distance_penalty: number;
+  distance_from_home_km: number | null; // null when no home location set
+}
+
+export interface RecommendationResponse {
+  date: string;
+  items: RecommendationItem[];
+  excluded: number; // trails filtered by profile limits
+}
+
 export interface UserRead {
   id: string;
   email: string;
