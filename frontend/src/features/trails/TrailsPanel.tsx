@@ -54,9 +54,12 @@ export function TrailsPanel({ onSelect }: TrailsPanelProps) {
         size="sm"
         variant="outline"
         onClick={() => setOpen(!open)}
-        className={cn(open && "bg-stone-100")}
+        className={cn("transition-colors", open ? "bg-stone-100 text-green-700" : "text-stone-700")}
       >
-        <Mountain size={14} />
+        <Mountain
+          size={14}
+          className={cn("transition-colors", open ? "fill-green-700 text-green-700" : "fill-none text-stone-700")}
+        />
         Trails
       </Button>
 

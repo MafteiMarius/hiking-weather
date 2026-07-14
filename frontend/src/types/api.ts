@@ -134,6 +134,27 @@ export interface RecommendationResponse {
   excluded: number; // trails filtered by profile limits
 }
 
+export interface Profile {
+  display_name: string | null;
+  home_lat: number | null;
+  home_lng: number | null;
+  experience_level: number; // 1 beginner … 5 expert
+  max_distance_km: number; // hard filter for recommendations
+  max_difficulty: number; // 1..5, hard filter for recommendations
+  units_metric: boolean;
+  locale: string;
+}
+
+/** PATCH body — omitted fields stay untouched, explicit null clears. */
+export interface ProfileUpdate {
+  display_name?: string | null;
+  home_lat?: number | null;
+  home_lng?: number | null;
+  experience_level?: number;
+  max_distance_km?: number;
+  max_difficulty?: number;
+}
+
 export interface UserRead {
   id: string;
   email: string;

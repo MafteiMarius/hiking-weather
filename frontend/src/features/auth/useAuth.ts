@@ -54,6 +54,12 @@ export function useLogout() {
     onSuccess: () => {
       qc.setQueryData(["me"], null);
       qc.invalidateQueries({ queryKey: ["me"] });
+      // Drop user-scoped caches: with a 5-min staleTime they would otherwise
+      // survive logout and show this user's data to the next account that
+      // signs in on the same browser.
+      qc.removeQueries({ queryKey: ["saved-locations"] });
+      qc.removeQueries({ queryKey: ["profile"] });
+      qc.removeQueries({ queryKey: ["recommendations"] });
     },
   });
 }

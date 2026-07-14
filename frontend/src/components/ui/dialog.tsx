@@ -8,23 +8,35 @@ interface DialogProps {
   title: string;
   children: React.ReactNode;
   className?: string;
+  /**
+   * Visually hide the dialog WITHOUT unmounting it — unlike `open: false`,
+   * the children (and their form state) stay alive. Used by flows that step
+   * out to the map mid-edit, e.g. picking a home location in the profile.
+   */
+  hidden?: boolean;
 }
 
-export function Dialog({ open, onClose, title, children, className }: DialogProps) {
-  // Close on Escape key
+export function Dialog({ open, onClose, title, children, className, hidden }: DialogProps) {
+  // Close on Escape key — suspended while hidden so Escape can mean
+  // "cancel the map interaction" instead of silently closing the dialog.
   useEffect(() => {
-    if (!open) return;
+    if (!open || hidden) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [open, hidden, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div
+      className={cn(
+        "fixed inset-0 z-[2000] flex items-center justify-center p-4",
+        hidden && "hidden",
+      )}
+    >
       {/* Backdrop — z-[2000] clears Leaflet's highest layer (z ~700) */}
       <div
         className="absolute inset-0 bg-stone-900/40"

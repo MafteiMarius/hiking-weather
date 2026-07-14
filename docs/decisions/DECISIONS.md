@@ -138,9 +138,20 @@ etc. are removed on Opus 4.7+ and will 400.
 **Trade-off accepted:** no response caching per (location, date) in v1 — every
 button press is one paid call. Add a small DB cache if usage grows.
 
+**Addendum (2026-07-12) — local-LLM fallback, designed but not built:** to make
+the feature work without an API key, add Ollama as a second provider behind
+the same `EquipmentPlan` schema. Provider order: `ANTHROPIC_API_KEY` set →
+Claude; else `OLLAMA_BASE_URL` set → local model via Ollama's native
+`/api/chat` with `format = EquipmentPlan.model_json_schema()` (grammar-
+constrained JSON, the local equivalent of `messages.parse()`); else 503 as
+today. No new dependency (uses the shared httpx client). Expect weaker reason
+quality from 7–8B models and 20–60 s CPU latency; the UI's pending state
+already tolerates this. Deliberately opt-in via config so production
+(no local Ollama) degrades to Claude-or-503 unchanged.
+
 ---
 
-## 013 — Trail catalogue data is drafted, not surveyed
+## 013 — Trail catalogue data is drafted, not surveyed — RESOLVED 2026-07-11
 
 **What:** the 25 seed trails (`app/seeds/trails.py`) carry coordinates,
 distances, durations, and elevation figures drafted from general route
@@ -149,6 +160,86 @@ knowledge. Plausible, but NOT verified against maps or GPS tracks.
 **Decision:** ship the feature now to unblock UI/forecast integration; verify
 every figure against Munții Noștri / OpenTopoMap before promoting the data as
 trustworthy. The seed file and README both carry the warning.
+
+**Resolution (2026-07-11):** all coordinates and summit elevations verified
+against OpenStreetMap via the Overpass API (bounding-box queries around each
+drafted point; worst drafts were off by 12 km). Distances/durations
+standardised as ONE-WAY trailhead→destination estimates (full loop for
+circuits), sanity-checked against guidebook times — planning figures, not GPS
+tracks. Known source conflicts kept in the seed docstring: Vârful Turnu
+1923 m (guidebooks) vs 1911 m (OSM); Omu 2505 vs 2507. The seeder gained an
+`--update` mode because the default insert-only mode deliberately never
+touches existing rows — corrections need an explicit
+`python -m app.seeds.trails --update`.
+
+---
+
+## 014 — Recommendation ranking: weather first, profile as adjustment
+
+**Choice:** `GET /api/v1/recommendations` ranks trails by the weather safety
+score at each trail's summit (start point when no summit), then subtracts
+personal penalties: 8 points per difficulty level above the profile's
+`experience_level`, and up to 10 points for distance from home (linear to
+`max_distance_km`). `max_difficulty` and `max_distance_km` are hard filters.
+
+**Why weather dominates:** the maximum distance penalty (10) is deliberately
+smaller than one score-label step (15–20), so a stormy trail near home can
+never outrank a clear day further away. Safety ranking must not be
+personalisable into unsafety.
+
+**Why the breakdown is exposed:** every response item carries
+`weather_score`, `difficulty_penalty`, `distance_penalty`, and the excluded
+count, and the UI renders them — a ranking users can't interrogate is a
+ranking they won't trust.
+
+**Bulk forecast fetch:** ranking 25 trails must not mean 25 Open-Meteo round
+trips. `get_forecasts_bulk()` sends one request with comma-separated
+coordinates (Open-Meteo returns a list — or a bare object for a single
+point) and upserts each payload under the same per-grid-cell cache keys the
+map view uses, so the two features share one cache. A length-mismatch guard
+raises instead of letting `zip()` silently mis-pair cells.
+
+**Trade-off accepted:** the ranking core is pure and unit-tested with
+hand-computed values (see `tests/test_recommend.py`), but the penalty
+constants themselves are judgement calls, not learned weights — revisit if
+real usage shows the ranking feels off.
+
+---
+
+## 015 — Profile editor lives on the map, home is picked ON the map
+
+**Choice:** the hiking-profile trigger is a map overlay button (next to
+Saved), not a header/menu item, and home location is set by a pick-on-map
+mode: "Choose on map" hides the dialog (children stay mounted, so unsaved
+edits survive), a hint pill appears, and the next map click becomes home and
+brings the dialog back. No coordinate inputs, no second map.
+
+**Why:** the app already has exactly one way to point at a place (the map),
+so reusing it costs zero new UI. A header trigger would have forced lifting
+pin state out of `ForecastPage` or a context just to pass coordinates to a
+dialog. Typed lat/lng inputs invite garbage data for no benefit at this
+scale.
+
+**First cut failed in real use:** v1 was a "Use map pin" button that copied
+the pin's *current* position — which forced positioning the pin before
+opening the dialog, and Marius (reasonably) expected the button itself to
+start a placement interaction. Lesson: a modal that needs input from the
+surface it covers must hand control back to that surface, not assume the
+user prepared it in advance. Mechanics: `Dialog` gained a `hidden` prop
+(display-none without unmount), the page owns the one-shot picking mode, and
+the picked point deliberately does NOT move the forecast pin (home is
+usually a city, not the spot being forecast).
+
+**Clearing semantics:** the form always PATCHes the full field set; clearing
+home sends explicit `home_lat/lng: null` (Pydantic `exclude_unset` treats a
+present null as "set to null", an absent field as "leave alone"). Documented
+in `ProfileUpdate` (frontend type) because the distinction is invisible at
+the call site.
+
+**Related fix:** logout now drops user-scoped query caches (saved-locations,
+profile, recommendations). With 5-minute `staleTime`, TanStack Query would
+otherwise happily serve user A's data to user B for a few minutes after an
+account switch on the same browser.
 
 ---
 

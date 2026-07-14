@@ -1,4 +1,4 @@
-import { useState, useCallback, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import {
@@ -6,14 +6,18 @@ import {
   ChevronDown,
   ChevronUp,
   Compass,
+  Home,
   Loader2,
   Mountain,
   Navigation2,
+  UserCog,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useForecast } from "@/features/forecast/useForecast";
 import { DayCard } from "@/features/forecast/DayCard";
 import { InstabilityBanner } from "@/features/forecast/InstabilityBanner";
 import { PackingPanel } from "@/features/forecast/PackingPanel";
+import { ProfileDialog } from "@/features/profile/ProfileDialog";
 import { RecommendPanel } from "@/features/trails/RecommendPanel";
 import { TrailsPanel } from "@/features/trails/TrailsPanel";
 
@@ -73,19 +77,46 @@ export function ForecastPage() {
   const [stripCollapsed, setStripCollapsed] = useState(false);
   const [packingOpen, setPackingOpen] = useState(false);
   const [recsOpen, setRecsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  // Home-picking mode: the profile dialog hides itself and the next map
+  // click becomes the home location instead of moving the forecast pin.
+  const [pickingHome, setPickingHome] = useState(false);
+  const [pickedHome, setPickedHome] = useState<{ lat: number; lng: number } | null>(null);
   // Last picked place name — prefills the "save spot" form
   const [placeName, setPlaceName] = useState("");
 
   const { data: me } = useMe();
   const { data: forecast, isLoading, isError } = useForecast(lat, lng);
 
-  const handleMapClick = useCallback((newLat: number, newLng: number) => {
-    setLat(newLat);
-    setLng(newLng);
-    setFlyTarget(null); // clear so FlyToController doesn't re-trigger
-    setSelectedDay(null);
-    setPlaceName("");
-  }, []);
+  const handleMapClick = useCallback(
+    (newLat: number, newLng: number) => {
+      if (pickingHome) {
+        // One-shot: capture the click for the profile form and return to it.
+        // Deliberately does NOT move the forecast pin — home is usually a
+        // city, not the spot being forecast.
+        setPickedHome({ lat: newLat, lng: newLng });
+        setPickingHome(false);
+        return;
+      }
+      setLat(newLat);
+      setLng(newLng);
+      setFlyTarget(null); // clear so FlyToController doesn't re-trigger
+      setSelectedDay(null);
+      setPlaceName("");
+    },
+    [pickingHome],
+  );
+
+  // Escape backs out of home-picking; the Dialog's own Escape handler is
+  // suspended while hidden, so the two never fight over the key.
+  useEffect(() => {
+    if (!pickingHome) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickingHome(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [pickingHome]);
 
   const handleGeocodeSelect = useCallback((result: GeocodeResult) => {
     setLat(result.lat);
@@ -147,9 +178,20 @@ export function ForecastPage() {
           <TrailsPanel onSelect={handleTrailSelect} />
         </div>
 
-        {/* Saved locations overlay — signed-in users only */}
+        {/* Profile + saved locations overlay — signed-in users only.
+            The profile trigger lives on the map (not the header) because the
+            dialog's "Use map pin" home picker needs the current pin. */}
         {me && (
-          <div className="absolute top-3 right-3 z-[500]">
+          <div className="absolute top-3 right-3 z-[500] flex items-start gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setProfileOpen(true)}
+              title="Hiking profile"
+            >
+              <UserCog size={14} />
+              <span className="hidden sm:inline">Profile</span>
+            </Button>
             <SavedPanel
               lat={lat}
               lng={lng}
@@ -157,6 +199,25 @@ export function ForecastPage() {
               suggestedName={placeName || locationLabel}
               onSelect={handleSavedSelect}
             />
+          </div>
+        )}
+
+        {/* Home-picking hint — replaces nothing, just floats above the map
+            while the profile dialog is hidden and waiting for a click */}
+        {pickingHome && (
+          <div className="absolute top-3 left-1/2 z-[600] -translate-x-1/2">
+            <div className="flex items-center gap-2 rounded-full border border-green-700 bg-white px-4 py-1.5 shadow-lg">
+              <Home size={13} className="text-green-700" />
+              <span className="text-sm text-stone-700">
+                Click the map to set your home location
+              </span>
+              <button
+                onClick={() => setPickingHome(false)}
+                className="text-xs font-medium text-stone-400 hover:text-stone-700"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -205,6 +266,7 @@ export function ForecastPage() {
             </>
           )}
           {forecast?.cached && !stripCollapsed && (
+            
             <span className="ml-auto text-xs text-stone-400">cached</span>
           )}
           <button
@@ -264,6 +326,21 @@ export function ForecastPage() {
           </div>
         )}
       </div>
+
+      {/* Hiking profile editor — feeds the recommendation ranking */}
+      {me && (
+        <ProfileDialog
+          open={profileOpen}
+          onClose={() => {
+            setProfileOpen(false);
+            // Forget an unsaved pick so reopening starts from server truth
+            setPickedHome(null);
+          }}
+          hidden={pickingHome}
+          pickedHome={pickedHome}
+          onPickOnMap={() => setPickingHome(true)}
+        />
+      )}
 
       {/* Personalised trail ranking for the selected (or first) day */}
       {recsDate && (

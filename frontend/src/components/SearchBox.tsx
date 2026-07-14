@@ -52,7 +52,7 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search location…"
+          placeholder="Search location"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

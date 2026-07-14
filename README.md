@@ -30,8 +30,12 @@ Work in progress. What works today:
   record of bad weather even when the forecast looks fine.
 - **Trail catalogue** — 25 curated routes in Bucegi, Piatra Craiului, Făgăraș,
   Retezat, Apuseni, Ceahlău, Ciucaș, and Iezer-Păpușa; pick one to fly the map
-  to its trailhead. *(Route data is drafted, not surveyed — verify against
-  official maps before hiking.)*
+  to its trailhead. Coordinates and summit elevations are verified against
+  OpenStreetMap; distances and durations are one-way planning estimates.
+- **Personalised recommendations** — signed-in users get a "Best trails"
+  ranking for any forecast day: the safety score at each trail's summit,
+  adjusted by their profile (experience level, difficulty cap, distance from
+  home), with the penalty breakdown shown so the ranking is never a black box.
 - **AI packing advice** *(optional)* — with an Anthropic API key configured,
   signed-in users get a Claude-generated equipment list for the selected day,
   grounded in the hourly forecast and the location's historical pattern.
@@ -41,7 +45,7 @@ Work in progress. What works today:
 - **Installable PWA scaffold** — map tiles and the last forecasts are cached
   by a service worker.
 
-Planned next (see Roadmap): personalised recommendations, Romanian UI.
+Planned next (see Roadmap): Romanian UI, production deployment.
 
 ## Setup guide
 
@@ -210,9 +214,9 @@ Railway for the backend, Vercel for the frontend.
 ```
 backend/
   app/
-    api/v1/        routes (auth, profile, forecast, geocode, elevation, locations, climatology, trails, ai)
+    api/v1/        routes (auth, profile, forecast, geocode, elevation, locations, climatology, trails, recommendations, ai)
     core/          config, auth wiring, refresh-token helpers
-    services/      openmeteo client + cache, scoring, climatology, ai (Claude)
+    services/      openmeteo client + cache, scoring, climatology, recommend (trail ranking), ai (Claude)
     db/            models, session
     seeds/         demo account, trail catalogue
   alembic/         migrations
@@ -220,7 +224,7 @@ backend/
 frontend/
   src/
     components/    app shell, auth modal, search box, ui primitives
-    features/      auth hooks, forecast hooks + day cards + hourly chart, saved locations
+    features/      auth hooks, forecast hooks + day cards + hourly chart, saved locations, trails + recommendations
     pages/         forecast page (map + 7-day strip)
     lib/           axios client with silent token refresh
 docs/decisions/    architecture decision log
@@ -235,14 +239,20 @@ cd backend && pytest        # needs the db container + hikecast_test database
 
 Covered: the safety score (pure unit tests), the Open-Meteo client with
 cache-hit proof (HTTP mocked with respx), the full auth flow, saved
-locations (incl. ownership), and the climatology aggregation math.
+locations (incl. ownership), the climatology aggregation math, the trail
+seeder (idempotent + update mode), and the recommendation ranking
+(hand-computed penalties, bulk-fetch call count, profile filters).
 
 ## Roadmap
 
-- Trail route data verification against official maps (current figures are
-  drafted placeholders).
-- Personalised recommendations (home location + experience level).
+Progress and per-session details: `docs/CHANGELOG.md`.
+
+- Profile UI for home location (used by recommendations; currently only
+  settable via the API).
 - Romanian UI (i18n is wired, strings not yet translated).
+- Production deployment: Neon (Postgres), Railway (backend), Vercel (frontend).
+- AI packing advice live test, or a local-LLM (Ollama) fallback so it works
+  without an API key (design in `docs/decisions/DECISIONS.md`, 012).
 - ANM nowcasting alerts overlay, GPX import, multi-point trail forecasts.
 
 ## Credits

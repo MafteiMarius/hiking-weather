@@ -1,6 +1,6 @@
 import { Wind, Droplets, Thermometer } from "lucide-react";
 import { ScoreBadge } from "@/components/ui/badge";
-import { SCORE_DOT } from "@/components/ui/score-colors";
+// import { SCORE_DOT } from "@/components/ui/score-colors";
 import { cn } from "@/lib/utils";
 import type { DayForecast } from "@/types/api";
 
@@ -47,10 +47,12 @@ export function DayCard({ day, isSelected, onClick }: DayCardProps) {
           </span>
           <span className="ml-1.5 text-xs text-stone-400">{dayNum}</span>
         </div>
+        {/*  
         <span
           className={cn("h-2 w-2 rounded-full", SCORE_DOT[day.score_label])}
           title={day.score_label}
         />
+        */}
       </div>
 
       {/* Score badge */}
