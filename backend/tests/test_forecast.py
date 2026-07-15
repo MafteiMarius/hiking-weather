@@ -107,6 +107,39 @@ async def test_forecast_clear_day_scores_100(client: AsyncClient) -> None:
     assert hour["weather_code"] == 1
 
 
+async def test_forecast_accept_language_ro_localizes_text(client: AsyncClient) -> None:
+    """Accept-Language: ro flips the generated text to Romanian; the numeric
+    score and the English label enum (used for frontend styling) are unchanged."""
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_STORM_DAY)
+        )
+        resp = await client.get(
+            FORECAST_URL,
+            params={"lat": 45.5, "lng": 25.3, "days": 1},
+            headers={"Accept-Language": "ro-RO,ro;q=0.9"},
+        )
+
+    assert resp.status_code == 200
+    day = resp.json()["days"][0]
+    assert day["weather_description"] == "Furtună"           # was "Thunderstorm"
+    assert "furtună" in day["score_reason"].lower()          # localized reason
+    assert day["score"] == 0                                 # logic unchanged
+    assert day["score_label"] == "Dangerous"                 # enum stays English
+
+
+async def test_forecast_no_header_defaults_to_english(client: AsyncClient) -> None:
+    """Absent Accept-Language → English (the API default; the web UI always
+    sends a header). Guards DEFAULT_LANG so the rest of the suite stays valid."""
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_STORM_DAY)
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 45.6, "lng": 25.4, "days": 1})
+
+    assert resp.json()["days"][0]["weather_description"] == "Thunderstorm"
+
+
 async def test_forecast_tolerates_payload_without_hourly(client: AsyncClient) -> None:
     """Cache entries written before hourly support lack the block — the
     endpoint must serve them with hours=[] instead of crashing."""

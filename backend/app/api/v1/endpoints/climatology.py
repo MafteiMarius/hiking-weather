@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.endpoints.forecast import get_http_client
 from app.db.models import Climatology
 from app.db.session import get_db
+from app.i18n import get_lang, t
 from app.schemas.climatology import ClimatologyResponse
 from app.services.climatology import get_climatology
 
@@ -29,30 +30,24 @@ GUST_WARN_KMH = 70
 VOLATILITY_WARN_PCT = 40
 
 
-def instability_reasons(row: Climatology) -> list[str]:
+def instability_reasons(row: Climatology, lang: str = "en") -> list[str]:
+    """Localized instability sentences. `lang` defaults to English so callers
+    that don't thread a language (e.g. the AI context builder) get English."""
     reasons: list[str] = []
     years = row.years_analyzed
     if row.thunderstorm_pct is not None and row.thunderstorm_pct >= THUNDER_WARN_PCT:
         reasons.append(
-            f"Thunderstorms on {row.thunderstorm_pct}% of these days "
-            f"over the last {years} years"
+            t("climatology.thunderstorm", lang, pct=row.thunderstorm_pct, years=years)
         )
     if (
         row.precip_day_frequency_pct is not None
         and row.precip_day_frequency_pct >= WET_WARN_PCT
     ):
-        reasons.append(
-            f"Rain on {row.precip_day_frequency_pct}% of these days historically"
-        )
+        reasons.append(t("climatology.wet", lang, pct=row.precip_day_frequency_pct))
     if row.wind_gust_p90_kmh is not None and row.wind_gust_p90_kmh >= GUST_WARN_KMH:
-        reasons.append(
-            f"Top-decile gusts reach {row.wind_gust_p90_kmh} km/h this week of the year"
-        )
+        reasons.append(t("climatology.gusts", lang, kmh=row.wind_gust_p90_kmh))
     if row.volatility_index is not None and row.volatility_index >= VOLATILITY_WARN_PCT:
-        reasons.append(
-            "Conditions flip between wet and dry "
-            f"{row.volatility_index}% of day-to-day transitions — forecasts age fast here"
-        )
+        reasons.append(t("climatology.volatility", lang, pct=row.volatility_index))
     return reasons
 
 
@@ -60,6 +55,7 @@ def instability_reasons(row: Climatology) -> list[str]:
 async def climatology_endpoint(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lng: Annotated[float, Query(ge=-180, le=180)],
+    lang: str = Depends(get_lang),
     session: AsyncSession = Depends(get_db),
     http: httpx.AsyncClient = Depends(get_http_client),
 ) -> ClimatologyResponse:
@@ -75,7 +71,7 @@ async def climatology_endpoint(
             status_code=404, detail="No archive data for this location"
         )
 
-    reasons = instability_reasons(row)
+    reasons = instability_reasons(row, lang)
     return ClimatologyResponse(
         lat=lat,
         lng=lng,

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import type { RecommendationResponse } from "@/types/api";
 
@@ -8,8 +9,10 @@ import type { RecommendationResponse } from "@/types/api";
  * cold cache, so we don't fire it speculatively.
  */
 export function useRecommendations(date: string | undefined, enabled: boolean) {
+  // Weather label/description/reason are localized server-side — key by language.
+  const { i18n } = useTranslation();
   return useQuery<RecommendationResponse>({
-    queryKey: ["recommendations", date],
+    queryKey: ["recommendations", date, i18n.language],
     queryFn: async () => {
       const { data } = await api.get<RecommendationResponse>("/recommendations", {
         params: { date },

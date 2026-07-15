@@ -22,10 +22,11 @@ from app.api.v1.endpoints.trails import _base_query, _row_to_read
 from app.core.auth import current_active_user
 from app.db.models import User, UserProfile
 from app.db.session import get_db
+from app.i18n import describe_weather, get_lang
 from app.schemas.recommend import RecommendationItem, RecommendationResponse
 from app.services.openmeteo import get_forecasts_bulk
 from app.services.recommend import TrailDay, rank_trails
-from app.services.scoring import WMO_DESCRIPTIONS, score_day
+from app.services.scoring import score_day
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
@@ -40,6 +41,7 @@ _DEFAULT_MAX_DISTANCE_KM = 150
 async def recommendations_endpoint(
     date: Annotated[Optional[str], Query(pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
     limit: Annotated[int, Query(ge=1, le=25)] = 10,
+    lang: str = Depends(get_lang),
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_db),
     http: httpx.AsyncClient = Depends(get_http_client),
@@ -89,7 +91,7 @@ async def recommendations_endpoint(
         temp_min = float(daily["temperature_2m_min"][i] or 0)
         precip = float(daily["precipitation_sum"][i] or 0)
         gusts = float(daily["wind_gusts_10m_max"][i] or 0)
-        result = score_day(code, temp_max, temp_min, precip, gusts)
+        result = score_day(code, temp_max, temp_min, precip, gusts, lang=lang)
 
         candidates.append(TrailDay(
             slug=trail.slug,
@@ -101,7 +103,7 @@ async def recommendations_endpoint(
         day_facts[trail.slug] = {
             "label": result.label,
             "reason": result.reason,
-            "description": WMO_DESCRIPTIONS.get(code, f"Code {code}"),
+            "description": describe_weather(code, lang),
             "temp_max_c": temp_max,
             "temp_min_c": temp_min,
             "precipitation_sum_mm": precip,

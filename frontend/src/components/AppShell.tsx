@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mountain, User, LogOut, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useMe, useLogout } from "@/features/auth/useAuth";
 
 interface AppShellProps {
@@ -12,6 +14,13 @@ export function AppShell({ children }: AppShellProps) {
   const [authOpen, setAuthOpen] = useState(false);
   const { data: me, isLoading: meLoading } = useMe();
   const logout = useLogout();
+  const { t, i18n } = useTranslation();
+
+  // Keep the document language in sync for accessibility and correct
+  // hyphenation/spellcheck. Runs on mount and on every toggle.
+  useEffect(() => {
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   return (
     <div className="flex h-full flex-col">
@@ -25,6 +34,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <LanguageToggle />
           {meLoading ? (
             <Loader2 size={16} className="animate-spin text-stone-400" />
           ) : me ? (
@@ -37,10 +47,10 @@ export function AppShell({ children }: AppShellProps) {
                 size="sm"
                 onClick={() => logout.mutate()}
                 disabled={logout.isPending}
-                aria-label="Sign out"
+                aria-label={t("header.signOut")}
               >
                 <LogOut size={14} />
-                <span className="hidden sm:inline">Sign out</span>
+                <span className="hidden sm:inline">{t("header.signOut")}</span>
               </Button>
             </>
           ) : (
@@ -50,7 +60,7 @@ export function AppShell({ children }: AppShellProps) {
               onClick={() => setAuthOpen(true)}
             >
               <User size={14} />
-              Sign in
+              {t("header.signIn")}
             </Button>
           )}
         </div>

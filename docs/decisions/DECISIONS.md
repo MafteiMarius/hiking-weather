@@ -243,6 +243,57 @@ account switch on the same browser.
 
 ---
 
+## 016 — i18n: server localizes generated text, frontend localizes chrome
+
+**Context:** much user-facing text is *generated* server-side and some
+interpolates live numbers — weather descriptions, score reasons ("Strong
+gusts (54 km/h)"), and the climatology instability sentences. The frontend
+can't translate those from a static bundle, so the split is:
+
+- **Server-generated / interpolated text → localized on the backend.** New
+  `app/i18n` package: flat EN+RO message tables (`messages.py`) keyed by
+  stable codes (`reason.wind.strong`), rendered by `t(key, lang, **params)`
+  via `str.format`. `scoring.py` keeps the *logic* (which factor wins, how
+  big the penalty) and now returns a message **key + params**; the wording
+  lives in the tables. `describe_weather(code, lang)` replaces the old
+  `WMO_DESCRIPTIONS` dict. Chosen over gettext/.po — ~50 short strings, no
+  plural rules worth the toolchain, and dict values stay greppable.
+- **Static UI chrome → localized on the frontend** with react-i18next
+  (`en.json`/`ro.json`), the existing wiring.
+- **The score label enum ("Excellent"…"Dangerous") stays English in the API**
+  and is translated by the frontend for display, because the frontend already
+  keys styling off it (`SCORE_STYLES`, `SCORE_DOT`). Localizing it server-side
+  would break those lookups.
+
+**Language selection — `Accept-Language`, not the profile.** The forecast and
+climatology endpoints are public (no auth), so a profile locale can't drive
+them. The web client sends `Accept-Language` (an axios request interceptor
+reads the live `i18n.language`); `resolve_lang` maps it to en/ro. One
+mechanism covers anonymous and authed users alike.
+
+**Why the API default is English while the UI default is Romanian.** The web
+app's `fallbackLng` is `ro` and it always sends `Accept-Language: ro` for a
+first-time visitor — so users get Romanian. But the API's *header-absent*
+default is English (`DEFAULT_LANG`), which only affects non-UI callers (curl,
+tests, other clients). Keeping it English means the existing test suite, which
+asserts English strings without sending a header, stays valid — the i18n
+refactor produces byte-identical English output, so not one prior scoring or
+forecast assertion changed.
+
+**Frontend refetch on switch:** the active language is part of the
+`forecast` / `climatology` / `recommendations` query keys. Flipping the toggle
+changes the key, so React Query fetches the new-language payload and caches
+both — no manual invalidation, no stale-language flash. (Trails and geocode
+results are proper nouns; deliberately not language-keyed.)
+
+**Trade-off / status:** EN and RO tables must be kept key-for-key in sync by
+hand — a missing key degrades to the English fallback, never a crash (tested).
+Backend + language plumbing shipped and browser-verified; the mechanical pass
+translating every component's chrome (and the score-label enum map) is the
+remaining slice.
+
+---
+
 ## 006 — recharts v3 (not v2)
 
 **Original scaffold had:** `recharts ^3.8.1`  

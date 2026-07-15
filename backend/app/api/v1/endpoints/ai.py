@@ -16,10 +16,11 @@ from app.api.v1.endpoints.forecast import get_http_client
 from app.core.auth import current_active_user
 from app.db.models import User
 from app.db.session import get_db
+from app.i18n import describe_weather
 from app.services import ai
 from app.services.climatology import get_climatology
 from app.services.openmeteo import get_forecast
-from app.services.scoring import WMO_DESCRIPTIONS, score_day
+from app.services.scoring import score_day
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -63,7 +64,7 @@ async def equipment_endpoint(
     result = score_day(code, temp_max, temp_min, precip, gusts)
     day = {
         "weather_code": code,
-        "weather_description": WMO_DESCRIPTIONS.get(code, f"Code {code}"),
+        "weather_description": describe_weather(code, "en"),
         "temp_max_c": temp_max,
         "temp_min_c": temp_min,
         "precipitation_sum_mm": precip,

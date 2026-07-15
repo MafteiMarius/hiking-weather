@@ -109,6 +109,30 @@ class TestCombinedPenalties:
         assert r.score >= 0
 
 
+class TestLocalizedReasons:
+    """The score/label are language-independent; only `reason` localizes.
+    English is the default (covered implicitly by every test above)."""
+
+    def test_romanian_reason_for_thunderstorm(self) -> None:
+        r = score_day(95, 18.0, 12.0, 0.0, 0.0, lang="ro")
+        assert r.score == 45  # unchanged by language
+        assert r.label == "Poor"  # English enum, unchanged
+        assert "furtună" in r.reason.lower()
+
+    def test_romanian_reason_for_good_day(self) -> None:
+        r = score_day(0, 20.0, 10.0, 0.0, 0.0, lang="ro")
+        assert r.reason == "Condiții bune pentru drumeție"
+
+    def test_romanian_interpolates_gusts(self) -> None:
+        r = score_day(0, 20.0, 10.0, 0.0, 50.0, lang="ro")
+        assert "km/h" in r.reason
+        assert "Rafale" in r.reason
+
+    def test_unknown_lang_falls_back_to_english(self) -> None:
+        r = score_day(95, 18.0, 12.0, 0.0, 0.0, lang="fr")
+        assert "thunderstorm" in r.reason.lower()
+
+
 class TestScoreLabels:
     def test_100_is_excellent(self) -> None:
         assert _score().label == "Excellent"

@@ -32,6 +32,7 @@ import { SearchBox } from "@/components/SearchBox";
 import type { GeocodeResult, SavedLocation, Trail } from "@/types/api";
 
 // Default: Bucegi massif — icon Carpathian location
+// Make the default location the USER's set HOME location -- MARIUS
 const DEFAULT_LAT = 45.36;
 const DEFAULT_LNG = 25.46;
 

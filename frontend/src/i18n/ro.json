@@ -3,6 +3,14 @@
     "name": "HikeCast",
     "tagline": "Prognoze pentru drumeții în Carpați"
   },
+  "header": {
+    "signIn": "Autentificare",
+    "signOut": "Deconectare"
+  },
+  "language": {
+    "label": "Limbă",
+    "switchTo": "Schimbă în {{lang}}"
+  },
   "nav": {
     "explore": "Explorează",
     "saved": "Salvate",

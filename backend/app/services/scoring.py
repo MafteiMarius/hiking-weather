@@ -10,60 +10,42 @@ WHY these numbers:
   - Heavy rain / snow: -40 because hypothermia + slippery rocks combine.
   - Temperature thresholds are alpine, not lowland — 0°C at summit elevation
     is very different from 0°C at sea level.
+
+i18n note: this module owns the *logic* (which factor wins, how big the
+penalty). The reason *wording* lives in app.i18n.messages, keyed by the codes
+built here. `score_day` renders the winning reason in `lang` (default "en", so
+callers and tests that don't care about language get English unchanged). The
+score label stays an English enum ("Excellent"…"Dangerous") because the
+frontend keys styling off it — the UI translates the label for display.
 """
 
 from dataclasses import dataclass
 
-# WMO Weather Code descriptions (used in API responses and score reasons)
-WMO_DESCRIPTIONS: dict[int, str] = {
-    0: "Clear sky",
-    1: "Mainly clear",
-    2: "Partly cloudy",
-    3: "Overcast",
-    45: "Fog",
-    48: "Icy fog",
-    51: "Light drizzle",
-    53: "Drizzle",
-    55: "Dense drizzle",
-    61: "Light rain",
-    63: "Rain",
-    65: "Heavy rain",
-    71: "Light snow",
-    73: "Snow",
-    75: "Heavy snow",
-    77: "Snow grains",
-    80: "Rain showers",
-    81: "Heavy rain showers",
-    82: "Violent rain showers",
-    85: "Snow showers",
-    86: "Heavy snow showers",
-    95: "Thunderstorm",
-    96: "Thunderstorm with hail",
-    99: "Thunderstorm with heavy hail",
-}
+from app.i18n import t
 
-# WMO code → (penalty, reason). Unlisted codes (0-3) carry no penalty.
-_WMO_PENALTIES: dict[int, tuple[int, str]] = {
-    45: (30, "Fog — navigation risk on ridges"),
-    48: (35, "Icy fog — visibility and ice hazard"),
-    51: (8, "Light drizzle"),
-    53: (12, "Drizzle"),
-    55: (18, "Dense drizzle"),
-    61: (20, "Rain expected"),
-    63: (28, "Moderate rain"),
-    65: (40, "Heavy rain — hypothermia risk"),
-    71: (10, "Light snow"),
-    73: (25, "Snow — slippery terrain"),
-    75: (40, "Heavy snow — trail may be impassable"),
-    77: (10, "Snow grains"),
-    80: (20, "Rain showers"),
-    81: (30, "Heavy rain showers"),
-    82: (45, "Violent rain showers"),
-    85: (25, "Snow showers"),
-    86: (40, "Heavy snow showers"),
-    95: (55, "Thunderstorm — stay off exposed ridges"),
-    96: (60, "Thunderstorm with hail"),
-    99: (65, "Thunderstorm with heavy hail"),
+# WMO code → penalty. Unlisted codes (clear range 0-3) carry no penalty.
+# Reason wording is in app.i18n.messages under "reason.wmo.{code}".
+_WMO_PENALTIES: dict[int, int] = {
+    45: 30,
+    48: 35,
+    51: 8,
+    53: 12,
+    55: 18,
+    61: 20,
+    63: 28,
+    65: 40,
+    71: 10,
+    73: 25,
+    75: 40,
+    77: 10,
+    80: 20,
+    81: 30,
+    82: 45,
+    85: 25,
+    86: 40,
+    95: 55,
+    96: 60,
+    99: 65,
 }
 
 _SCORE_LABEL_THRESHOLDS = [
@@ -78,50 +60,56 @@ _SCORE_LABEL_THRESHOLDS = [
 @dataclass(frozen=True)
 class ScoreResult:
     score: int        # 0-100
-    label: str        # "Excellent" … "Dangerous"
-    reason: str       # human-readable primary concern
+    label: str        # "Excellent" … "Dangerous" (English enum; UI translates)
+    reason: str       # localized human-readable primary concern
 
 
-def _wmo_penalty(code: int) -> tuple[int, str]:
-    return _WMO_PENALTIES.get(code, (0, ""))
+# Each penalty fn returns (penalty, message_key, params). An empty key means
+# "no penalty" — score_day filters those out. Keeping key+params separate from
+# the rendered string is what lets the same logic produce EN or RO reasons.
+def _wmo_penalty(code: int) -> tuple[int, str, dict]:
+    penalty = _WMO_PENALTIES.get(code)
+    if penalty is None:
+        return 0, "", {}
+    return penalty, f"reason.wmo.{code}", {}
 
 
-def _wind_penalty(gusts_kmh: float) -> tuple[int, str]:
+def _wind_penalty(gusts_kmh: float) -> tuple[int, str, dict]:
     if gusts_kmh > 90:
-        return 60, f"Dangerous gusts ({gusts_kmh:.0f} km/h) — do not summit"
+        return 60, "reason.wind.dangerous", {"gusts": gusts_kmh}
     if gusts_kmh > 60:
-        return 40, f"Very strong gusts ({gusts_kmh:.0f} km/h)"
+        return 40, "reason.wind.very_strong", {"gusts": gusts_kmh}
     if gusts_kmh > 45:
-        return 25, f"Strong gusts ({gusts_kmh:.0f} km/h)"
+        return 25, "reason.wind.strong", {"gusts": gusts_kmh}
     if gusts_kmh > 30:
-        return 10, f"Moderate gusts ({gusts_kmh:.0f} km/h)"
-    return 0, ""
+        return 10, "reason.wind.moderate", {"gusts": gusts_kmh}
+    return 0, "", {}
 
 
-def _precip_penalty(mm: float) -> tuple[int, str]:
+def _precip_penalty(mm: float) -> tuple[int, str, dict]:
     if mm > 20:
-        return 25, f"Heavy rainfall ({mm:.1f} mm)"
+        return 25, "reason.precip.heavy", {"mm": mm}
     if mm > 10:
-        return 15, f"Significant rainfall ({mm:.1f} mm)"
+        return 15, "reason.precip.significant", {"mm": mm}
     if mm > 5:
-        return 8, f"Moderate rainfall ({mm:.1f} mm)"
+        return 8, "reason.precip.moderate", {"mm": mm}
     if mm > 1:
-        return 3, f"Light rainfall ({mm:.1f} mm)"
-    return 0, ""
+        return 3, "reason.precip.light", {"mm": mm}
+    return 0, "", {}
 
 
-def _temp_penalty(temp_min: float, temp_max: float) -> tuple[int, str]:
+def _temp_penalty(temp_min: float, temp_max: float) -> tuple[int, str, dict]:
     if temp_min < -15:
-        return 30, f"Extreme cold ({temp_min:.0f}°C) — frostbite risk"
+        return 30, "reason.temp.extreme_cold", {"temp": temp_min}
     if temp_min < -5:
-        return 15, f"Very cold ({temp_min:.0f}°C)"
+        return 15, "reason.temp.very_cold", {"temp": temp_min}
     if temp_min < 0:
-        return 5, f"Below freezing ({temp_min:.0f}°C)"
+        return 5, "reason.temp.below_freezing", {"temp": temp_min}
     if temp_max > 38:
-        return 25, f"Extreme heat ({temp_max:.0f}°C) — heat stroke risk"
+        return 25, "reason.temp.extreme_heat", {"temp": temp_max}
     if temp_max > 32:
-        return 10, f"Very hot ({temp_max:.0f}°C) — carry extra water"
-    return 0, ""
+        return 10, "reason.temp.very_hot", {"temp": temp_max}
+    return 0, "", {}
 
 
 def score_day(
@@ -130,27 +118,35 @@ def score_day(
     temp_min: float,
     precip_mm: float,
     wind_gusts_kmh: float,
+    lang: str = "en",
 ) -> ScoreResult:
-    """Score one forecast day. Pure function — no I/O."""
-    penalties: list[tuple[int, str]] = []
+    """Score one forecast day. Pure function — no I/O.
 
-    for fn_result in [
+    `lang` only affects the rendered `reason` string; the score and label are
+    language-independent.
+    """
+    penalties: list[tuple[int, str, dict]] = []
+
+    for penalty, key, params in [
         _wmo_penalty(weather_code),
         _wind_penalty(wind_gusts_kmh),
         _precip_penalty(precip_mm),
         _temp_penalty(temp_min, temp_max),
     ]:
-        p, r = fn_result
-        if p:
-            penalties.append((p, r))
+        if penalty:
+            penalties.append((penalty, key, params))
 
     # Sort descending so the worst factor is first
     penalties.sort(key=lambda x: x[0], reverse=True)
 
-    total_penalty = sum(p for p, _ in penalties)
+    total_penalty = sum(p for p, _, _ in penalties)
     score = max(0, min(100, 100 - total_penalty))
 
     label = next(lbl for threshold, lbl in _SCORE_LABEL_THRESHOLDS if score >= threshold)
-    reason = penalties[0][1] if penalties else "Conditions look good for hiking"
+    if penalties:
+        _, key, params = penalties[0]
+        reason = t(key, lang, **params)
+    else:
+        reason = t("reason.good", lang)
 
     return ScoreResult(score=score, label=label, reason=reason)

@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import i18n from "@/i18n";
 
 // Reads VITE_API_URL from the .env file at build time.
 // In dev, Vite's proxy (vite.config.ts) forwards /api → localhost:8000,
@@ -6,6 +7,15 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "/api/v1",
   withCredentials: true, // sends the httpOnly JWT cookie on every request
+});
+
+// Tell the backend which language to generate weather descriptions, score
+// reasons, and climatology sentences in. Read per-request (not once) so it
+// tracks the live UI language after a toggle. Falls back to Romanian, the
+// app's default market, matching i18n's fallbackLng.
+api.interceptors.request.use((config) => {
+  config.headers["Accept-Language"] = i18n.language || "ro";
+  return config;
 });
 
 // ── Silent token refresh ──────────────────────────────────────────────────────

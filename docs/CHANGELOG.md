@@ -27,7 +27,13 @@ personalised trail recommendations, profile dialog (experience/difficulty/
 home-from-pin/max-distance — feeds the recommendations), AI packing advice
 (Claude, optional — 503 without API key, never tested live).
 
-**Quality bar:** 75 backend tests green; frontend `npx eslint src` and
+Romanian i18n is **in progress**: all server-generated text (weather
+descriptions, score reasons, climatology sentences) is now localized via
+`Accept-Language`, and a header RO/EN toggle (default RO) is live. The
+mechanical translation of static UI chrome + the score-label enum is the
+remaining slice (see NEXT UP).
+
+**Quality bar:** 93 backend tests green; frontend `npx eslint src` and
 `npx tsc --noEmit` clean. Every feature verified in the browser before done.
 
 **Data caveats:** trail distances/durations are one-way planning estimates,
@@ -37,8 +43,16 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
-1. **Romanian i18n** — react-i18next is wired (`src/i18n/`), all strings are
-   hardcoded English. Mechanical but broad; touch every component once.
+1. **Romanian i18n — finish the frontend chrome (server + toggle done).**
+   Backend localization (DECISIONS 016) and the RO/EN header toggle are
+   shipped. Remaining: `useTranslation` across the still-English components
+   (ForecastPage strip labels "7-Day Forecast"/"cached"/"gusts", TrailsPanel,
+   SavedPanel, RecommendPanel, PackingPanel, ProfileDialog, SearchBox,
+   InstabilityBanner's own "Historically unstable…" prefix, AuthModal), plus a
+   frontend map for the score-label enum ("Excellent"…"Dangerous" → RO) — keep
+   the English enum for `SCORE_STYLES`/`SCORE_DOT` styling, translate only the
+   display text. Pattern established in `AppShell` + `LanguageToggle`. Grow
+   `en.json`/`ro.json` as you go; keep them key-for-key in sync.
 2. **Deployment (~Day 16 of the original plan)** — Neon (Postgres+PostGIS),
    Railway (backend; Dockerfile pins Python 3.12, DECISIONS 005), Vercel
    (frontend). Pre-flight: generate a ≥32-byte `JWT_SECRET` (dev one is 26
@@ -108,6 +122,28 @@ npx eslint src && npx tsc --noEmit       # frontend checks
 ---
 
 ## SESSION LOG (newest first)
+
+### 2026-07-15 — Romanian i18n: backend localization + language toggle
+- **Backend (DECISIONS 016):** new `app/i18n` package — EN+RO message tables
+  (`messages.py`), `t(key, lang, **params)`, `describe_weather(code, lang)`,
+  `resolve_lang`/`get_lang` (Accept-Language → en/ro, header-absent default
+  `en`). `scoring.py` refactored to return a message key + params (logic
+  unchanged); forecast/recommend/climatology endpoints thread `lang`. English
+  output is byte-identical, so all prior tests stayed green.
+- **Frontend:** axios request interceptor sends `Accept-Language` from the live
+  `i18n.language`; i18n default RO (localStorage-only detection, no browser
+  auto-switch); `forecast`/`climatology`/`recommendations` query keys include
+  the language so a toggle refetches cleanly (both cached, no stale flash);
+  `LanguageToggle` (RO/EN segmented) in the header; `AppShell` strings + `<html
+  lang>` synced. First chrome example done.
+- **Tests:** +18 (93 total). New `test_i18n.py` (resolve_lang/t/describe_weather
+  incl. fallbacks); RO reason cases in `test_scoring.py`; Accept-Language
+  round-trip + English-default cases in `test_forecast.py`.
+- **Verified live:** backend curl RO="Averse de ploaie" / EN="Rain showers";
+  browser default RO, toggle → EN refetches all server text, console clean,
+  eslint + tsc clean.
+- **Remaining (NEXT UP #1):** translate the rest of the component chrome +
+  score-label enum display map.
 
 ### 2026-07-14 — Profile UI (open item #1 done)
 - `ProfileDialog` (`frontend/src/features/profile/`): display name, 1–5

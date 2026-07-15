@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.db.session import get_db
+from app.i18n import describe_weather, get_lang
 from app.schemas.forecast import (
     DayForecast,
     ElevationResponse,
@@ -15,7 +16,7 @@ from app.schemas.forecast import (
     HourForecast,
 )
 from app.services.openmeteo import geocode, get_elevation, get_forecast
-from app.services.scoring import WMO_DESCRIPTIONS, score_day
+from app.services.scoring import score_day
 
 router = APIRouter(tags=["forecast"])
 
@@ -30,6 +31,7 @@ async def forecast_endpoint(
     lat: Annotated[float, Query(ge=-90, le=90)],
     lng: Annotated[float, Query(ge=-180, le=180)],
     days: Annotated[int, Query(ge=1, le=7)] = 7,
+    lang: str = Depends(get_lang),
     session: AsyncSession = Depends(get_db),
     http: httpx.AsyncClient = Depends(get_http_client),
 ) -> ForecastResponse:
@@ -52,12 +54,12 @@ async def forecast_endpoint(
         wind_speed = float(daily["wind_speed_10m_max"][i] or 0)
         wind_gusts = float(daily["wind_gusts_10m_max"][i] or 0)
 
-        result = score_day(code, temp_max, temp_min, precip, wind_gusts)
+        result = score_day(code, temp_max, temp_min, precip, wind_gusts, lang=lang)
         scored_days.append(
             DayForecast(
                 date=date,
                 weather_code=code,
-                weather_description=WMO_DESCRIPTIONS.get(code, f"Code {code}"),
+                weather_description=describe_weather(code, lang),
                 temp_max_c=temp_max,
                 temp_min_c=temp_min,
                 precipitation_sum_mm=precip,

@@ -3,6 +3,14 @@
     "name": "HikeCast",
     "tagline": "Hiker-tuned forecasts for the Carpathians"
   },
+  "header": {
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "language": {
+    "label": "Language",
+    "switchTo": "Switch to {{lang}}"
+  },
   "nav": {
     "explore": "Explore",
     "saved": "Saved",
