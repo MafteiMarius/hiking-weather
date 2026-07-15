@@ -3,6 +3,15 @@
     "name": "HikeCast",
     "tagline": "Prognoze pentru drumeții în Carpați"
   },
+  "common": {
+    "cancel": "Anulează",
+    "close": "Închide",
+    "save": "Salvează",
+    "saving": "Se salvează…",
+    "essential": "Esențial",
+    "optional": "Opțional",
+    "serverUnreachable": "Serverul nu poate fi contactat."
+  },
   "header": {
     "signIn": "Autentificare",
     "signOut": "Deconectare"
@@ -11,19 +20,110 @@
     "label": "Limbă",
     "switchTo": "Schimbă în {{lang}}"
   },
-  "nav": {
-    "explore": "Explorează",
-    "saved": "Salvate",
-    "recommendations": "Recomandări",
-    "profile": "Profil"
+  "auth": {
+    "tabSignIn": "Autentificare",
+    "tabRegister": "Creează cont",
+    "email": "Email",
+    "password": "Parolă",
+    "confirmPassword": "Confirmă parola",
+    "pleaseWait": "Așteptați…",
+    "noAccount": "Nu ai cont?",
+    "signUp": "Înregistrează-te",
+    "haveAccount": "Ai deja cont?",
+    "errPasswordsMismatch": "Parolele nu coincid.",
+    "errPasswordLength": "Parola trebuie să aibă cel puțin 8 caractere.",
+    "errUserExists": "Există deja un cont cu acest email. Încearcă autentificarea.",
+    "errInvalidEmail": "Adresa de email nu pare validă.",
+    "errServerDown": "Serverul nu poate fi contactat — rulează backendul?",
+    "errRegisterGeneric": "Înregistrarea a eșuat. Încearcă din nou.",
+    "errInvalidCredentials": "Email sau parolă incorecte."
   },
-  "footer": {
-    "attribution": "Date meteo de la Open-Meteo (CC BY 4.0)",
-    "disclaimer": "Prognozele sunt orientative. Verificați întotdeauna ANM și Salvamont înainte de a merge în munți."
+  "search": {
+    "placeholder": "Caută o locație"
+  },
+  "forecast": {
+    "title": "Prognoză pe 7 zile",
+    "bestTrails": "Cele mai bune trasee",
+    "hourlyFor": "— orar pentru {{date}}",
+    "whatToPack": "Ce să iei?",
+    "cached": "din cache",
+    "expand": "Extinde prognoza",
+    "collapse": "Restrânge prognoza",
+    "loadError": "Prognoza nu s-a putut încărca — verifică conexiunea.",
+    "gusts": "rafale {{value}} km/h",
+    "profile": "Profil",
+    "profileTitle": "Profil de drumeție",
+    "setHomeHint": "Apasă pe hartă pentru a seta locația de acasă"
   },
   "score": {
-    "go": "Du-te",
-    "caution": "Atenție",
-    "no_go": "Nu merge"
+    "label": {
+      "Excellent": "Excelent",
+      "Good": "Bun",
+      "Fair": "Acceptabil",
+      "Poor": "Slab",
+      "Dangerous": "Periculos"
+    }
+  },
+  "instability": {
+    "title": "Instabil istoric în această săptămână a anului."
+  },
+  "chart": {
+    "noData": "Nu există date orare pentru această zi.",
+    "temp": "Temp.",
+    "rain": "Ploaie",
+    "gusts": "Rafale"
+  },
+  "trails": {
+    "button": "Trasee",
+    "difficulty": "Dificultate {{level}}/5"
+  },
+  "saved": {
+    "saveSpot": "Salvează locul",
+    "saveThisSpot": "Salvează acest loc",
+    "saved": "Salvate",
+    "savedTitle": "Locuri salvate",
+    "saveHeading": "Salvează {{coords}}",
+    "namePlaceholder": "Denumește locul…",
+    "saveError": "Salvarea a eșuat — încearcă din nou.",
+    "empty": "Nimic salvat încă — alege un loc și apasă „Salvează locul”.",
+    "deleteAria": "Șterge {{name}}"
+  },
+  "recommend": {
+    "title": "Cele mai bune trasee — {{date}}",
+    "loading": "Verific prognoza pe fiecare vârf…",
+    "errorGeneric": "Nu s-au putut clasa traseele — încearcă din nou.",
+    "empty": "Niciun traseu nu corespunde filtrelor tale pentru această zi — mărește limitele de distanță sau dificultate în profil.",
+    "penaltyExperience": "−{{n}} peste experiența ta",
+    "penaltyDistance": "−{{n}} distanță",
+    "footer": "Scorul meteo pe fiecare vârf, ajustat după profilul tău.",
+    "hidden": "Ascunse de limitele profilului: {{count}}."
+  },
+  "packing": {
+    "title": "Ce să iei — {{date}}",
+    "loading": "Citesc prognoza și pregătesc o listă…",
+    "errNotConfigured": "Sfaturile AI nu sunt configurate pe acest server (fără cheie API).",
+    "errGeneric": "Nu s-au putut obține sfaturile — încearcă din nou.",
+    "footer": "Generat de AI din prognoză — folosește-ți propria judecată pe munte."
+  },
+  "profile": {
+    "loadError": "Profilul nu s-a putut încărca — încearcă din nou.",
+    "intro": "„Cele mai bune trasee” folosește acestea pentru a filtra și clasa recomandările.",
+    "displayName": "Nume afișat (opțional)",
+    "displayNamePlaceholder": "Cum să te numim?",
+    "experience": "Nivel de experiență",
+    "experienceHint": "Traseele mai grele decât atât apar mai jos, dar rămân vizibile.",
+    "maxDifficulty": "Dificultate maximă",
+    "maxDifficultyHint": "Traseele peste acest nivel sunt ascunse complet.",
+    "home": "Locație de acasă",
+    "notSet": "Nesetată",
+    "clearHome": "Șterge locația de acasă",
+    "chooseOnMap": "Alege pe hartă",
+    "homeHint": "„Alege pe hartă” ascunde această fereastră — apasă pe casa ta pe hartă și vei fi adus înapoi. Fără o locație, distanța este ignorată.",
+    "maxDistance": "Distanță maximă de acasă",
+    "distanceError": "Introdu o distanță între 1 și 5000 km.",
+    "saveError": "Salvarea a eșuat — încearcă din nou.",
+    "save": "Salvează profilul",
+    "experienceLevels": ["Începător", "Ocazional", "Constant", "Experimentat", "Expert"],
+    "difficultyLevels": ["Plimbări ușoare", "Ușor", "Moderat", "Greu", "Foarte greu / expus"]
   }
 }

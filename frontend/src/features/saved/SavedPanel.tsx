@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Bookmark, Loader2, MapPin, Trash2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +25,7 @@ interface SavedPanelProps {
  * dropdown list of previously saved locations. Rendered only when logged in.
  */
 export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: SavedPanelProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
@@ -53,9 +55,9 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={startSaving} title="Save this spot">
+        <Button size="sm" variant="outline" onClick={startSaving} title={t("saved.saveThisSpot")}>
           <Bookmark size={14} />
-          <span className="hidden sm:inline">Save spot</span>
+          <span className="hidden sm:inline">{t("saved.saveSpot")}</span>
         </Button>
         <Button
           size="sm"
@@ -65,10 +67,10 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
             setSaving(false);
           }}
           className={cn(open && "bg-stone-100")}
-          title="Saved locations"
+          title={t("saved.savedTitle")}
         >
           <Bookmark size={14} className="fill-current sm:hidden" />
-          <span className="hidden sm:inline">Saved</span>
+          <span className="hidden sm:inline">{t("saved.saved")}</span>
           {locations && locations.length > 0 && (
             <span className="rounded-full bg-green-700 px-1.5 text-xs text-white">
               {locations.length}
@@ -85,13 +87,15 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-stone-600">
-              Save {lat.toFixed(3)}°N, {lng.toFixed(3)}°E
+              {t("saved.saveHeading", {
+                coords: `${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E`,
+              })}
             </span>
             <button
               type="button"
               onClick={() => setSaving(false)}
               className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-              aria-label="Cancel"
+              aria-label={t("common.cancel")}
             >
               <X size={14} />
             </button>
@@ -99,15 +103,15 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
           <Input
             autoFocus
             maxLength={160}
-            placeholder="Name this spot…"
+            placeholder={t("saved.namePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           {save.isError && (
-            <p className="text-xs text-red-600">Could not save — try again.</p>
+            <p className="text-xs text-red-600">{t("saved.saveError")}</p>
           )}
           <Button type="submit" size="sm" disabled={save.isPending || !name.trim()}>
-            {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? t("common.saving") : t("common.save")}
           </Button>
         </form>
       )}
@@ -122,7 +126,7 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
           )}
           {locations && locations.length === 0 && (
             <p className="px-3 py-4 text-center text-xs text-stone-400">
-              Nothing saved yet — pick a spot and hit “Save spot”.
+              {t("saved.empty")}
             </p>
           )}
           {locations && locations.length > 0 && (
@@ -151,7 +155,7 @@ export function SavedPanel({ lat, lng, elevationM, suggestedName, onSelect }: Sa
                     onClick={() => remove.mutate(loc.id)}
                     disabled={remove.isPending}
                     className="mr-2 rounded p-1.5 text-stone-300 hover:bg-red-50 hover:text-red-600"
-                    aria-label={`Delete ${loc.name}`}
+                    aria-label={t("saved.deleteAria", { name: loc.name })}
                   >
                     <Trash2 size={14} />
                   </button>

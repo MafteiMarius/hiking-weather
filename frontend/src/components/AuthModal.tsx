@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { isAxiosError } from "axios";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,30 +12,30 @@ import { cn } from "@/lib/utils";
 // either a plain string ("REGISTER_USER_ALREADY_EXISTS") or an object
 // ({ code: "REGISTER_INVALID_PASSWORD", reason: "..." }). Map both to
 // something a human can act on.
-function registerErrorMessage(err: unknown): string {
+function registerErrorMessage(err: unknown, t: TFunction): string {
   if (isAxiosError(err)) {
     const detail = err.response?.data?.detail;
     if (detail === "REGISTER_USER_ALREADY_EXISTS") {
-      return "An account with this email already exists. Try signing in instead.";
+      return t("auth.errUserExists");
     }
     if (typeof detail?.reason === "string") {
-      return detail.reason; // password policy failure, worded by the backend
+      return detail.reason; // password policy failure, worded by the backend (EN only)
     }
     if (err.response?.status === 422) {
-      return "That doesn't look like a valid email address.";
+      return t("auth.errInvalidEmail");
     }
     if (!err.response) {
-      return "Could not reach the server — is the backend running?";
+      return t("auth.errServerDown");
     }
   }
-  return "Registration failed. Please try again.";
+  return t("auth.errRegisterGeneric");
 }
 
-function loginErrorMessage(err: unknown): string {
+function loginErrorMessage(err: unknown, t: TFunction): string {
   if (isAxiosError(err) && !err.response) {
-    return "Could not reach the server — is the backend running?";
+    return t("auth.errServerDown");
   }
-  return "Invalid email or password.";
+  return t("auth.errInvalidCredentials");
 }
 
 interface AuthModalProps {
@@ -44,6 +46,7 @@ interface AuthModalProps {
 type Tab = "login" | "register";
 
 export function AuthModal({ open, onClose }: AuthModalProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,11 +78,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
     if (tab === "register") {
       if (password !== confirm) {
-        setFormError("Passwords do not match.");
+        setFormError(t("auth.errPasswordsMismatch"));
         return;
       }
       if (password.length < 8) {
-        setFormError("Password must be at least 8 characters.");
+        setFormError(t("auth.errPasswordLength"));
         return;
       }
       try {
@@ -89,7 +92,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         reset();
         onClose();
       } catch (err) {
-        setFormError(registerErrorMessage(err));
+        setFormError(registerErrorMessage(err, t));
       }
       return;
     }
@@ -99,7 +102,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       reset();
       onClose();
     } catch (err) {
-      setFormError(loginErrorMessage(err));
+      setFormError(loginErrorMessage(err, t));
     }
   }
 
@@ -107,18 +110,18 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     <Dialog open={open} onClose={onClose} title="HikeCast">
       {/* Tabs */}
       <div className="mb-5 flex rounded-lg border border-stone-200 bg-stone-50 p-1">
-        {(["login", "register"] as Tab[]).map((t) => (
+        {(["login", "register"] as Tab[]).map((tabName) => (
           <button
-            key={t}
-            onClick={() => switchTab(t)}
+            key={tabName}
+            onClick={() => switchTab(tabName)}
             className={cn(
               "flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors",
-              tab === t
+              tab === tabName
                 ? "bg-white text-stone-900 shadow-sm"
                 : "text-stone-500 hover:text-stone-700",
             )}
           >
-            {t === "login" ? "Sign in" : "Create account"}
+            {tabName === "login" ? t("auth.tabSignIn") : t("auth.tabRegister")}
           </button>
         ))}
       </div>
@@ -126,7 +129,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-stone-600">
-            Email
+            {t("auth.email")}
           </label>
           <Input
             type="email"
@@ -139,7 +142,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-stone-600">
-            Password
+            {t("auth.password")}
           </label>
           <Input
             type="password"
@@ -153,7 +156,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         {tab === "register" && (
           <div>
             <label className="mb-1 block text-xs font-medium text-stone-600">
-              Confirm password
+              {t("auth.confirmPassword")}
             </label>
             <Input
               type="password"
@@ -172,32 +175,32 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
         <Button type="submit" className="mt-2 w-full" disabled={isPending}>
           {isPending
-            ? "Please wait…"
+            ? t("auth.pleaseWait")
             : tab === "login"
-              ? "Sign in"
-              : "Create account"}
+              ? t("auth.tabSignIn")
+              : t("auth.tabRegister")}
         </Button>
       </form>
 
       <p className="mt-4 text-center text-xs text-stone-500">
         {tab === "login" ? (
           <>
-            No account?{" "}
+            {t("auth.noAccount")}{" "}
             <button
               onClick={() => switchTab("register")}
               className="font-medium text-green-700 hover:underline"
             >
-              Sign up
+              {t("auth.signUp")}
             </button>
           </>
         ) : (
           <>
-            Already have one?{" "}
+            {t("auth.haveAccount")}{" "}
             <button
               onClick={() => switchTab("login")}
               className="font-medium text-green-700 hover:underline"
             >
-              Sign in
+              {t("auth.tabSignIn")}
             </button>
           </>
         )}

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { isAxiosError } from "axios";
 import { Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Dialog } from "@/components/ui/dialog";
 import { useEquipment } from "@/features/forecast/useEquipment";
 import { cn } from "@/lib/utils";
@@ -13,16 +15,16 @@ interface PackingPanelProps {
   onClose: () => void;
 }
 
-function errorMessage(err: unknown): string {
+function errorMessage(err: unknown, t: TFunction): string {
   if (isAxiosError(err)) {
     if (err.response?.status === 503) {
-      return "AI advice isn't configured on this server (no API key).";
+      return t("packing.errNotConfigured");
     }
     if (!err.response) {
-      return "Could not reach the server.";
+      return t("common.serverUnreachable");
     }
   }
-  return "Could not get packing advice — try again in a moment.";
+  return t("packing.errGeneric");
 }
 
 /**
@@ -30,6 +32,7 @@ function errorMessage(err: unknown): string {
  * opens (explicit user action — each call costs money server-side).
  */
 export function PackingPanel({ lat, lng, date, open, onClose }: PackingPanelProps) {
+  const { t } = useTranslation();
   const equipment = useEquipment();
   const { mutate } = equipment;
   // Ref guard: StrictMode double-runs effects in dev, and each call costs
@@ -48,19 +51,17 @@ export function PackingPanel({ lat, lng, date, open, onClose }: PackingPanelProp
   const plan = equipment.data;
 
   return (
-    <Dialog open={open} onClose={onClose} title={`What to pack — ${date}`}>
+    <Dialog open={open} onClose={onClose} title={t("packing.title", { date })}>
       {equipment.isPending && (
         <div className="flex flex-col items-center gap-3 py-8">
           <Loader2 size={24} className="animate-spin text-green-700" />
-          <p className="text-sm text-stone-500">
-            Reading the forecast and putting a list together…
-          </p>
+          <p className="text-sm text-stone-500">{t("packing.loading")}</p>
         </div>
       )}
 
       {equipment.isError && (
         <div className="py-4">
-          <p className="text-sm text-red-600">{errorMessage(equipment.error)}</p>
+          <p className="text-sm text-red-600">{errorMessage(equipment.error, t)}</p>
         </div>
       )}
 
@@ -90,7 +91,7 @@ export function PackingPanel({ lat, lng, date, open, onClose }: PackingPanelProp
                       : "bg-stone-100 text-stone-500",
                   )}
                 >
-                  {item.essential ? "Essential" : "Optional"}
+                  {item.essential ? t("common.essential") : t("common.optional")}
                 </span>
                 <span>
                   <span className="block text-sm font-medium text-stone-900">
@@ -104,7 +105,7 @@ export function PackingPanel({ lat, lng, date, open, onClose }: PackingPanelProp
 
           <p className="flex items-center gap-1.5 text-xs text-stone-400">
             <Sparkles size={12} />
-            AI-generated from the forecast — use your own judgement on the mountain.
+            {t("packing.footer")}
           </p>
         </div>
       )}

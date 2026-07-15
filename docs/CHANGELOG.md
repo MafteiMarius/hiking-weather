@@ -27,11 +27,13 @@ personalised trail recommendations, profile dialog (experience/difficulty/
 home-from-pin/max-distance — feeds the recommendations), AI packing advice
 (Claude, optional — 503 without API key, never tested live).
 
-Romanian i18n is **in progress**: all server-generated text (weather
-descriptions, score reasons, climatology sentences) is now localized via
-`Accept-Language`, and a header RO/EN toggle (default RO) is live. The
-mechanical translation of static UI chrome + the score-label enum is the
-remaining slice (see NEXT UP).
+Romanian i18n is **complete** (bar the AI packing prompt, which stays English
+while AI is on hold): all server-generated text is localized via
+`Accept-Language`, every component's static chrome goes through
+react-i18next, weekday names come from `Intl` in the active locale, the
+score-label enum is translated for display (English enum kept for styling),
+and a header RO/EN toggle (default RO) flips the whole UI. Both languages
+browser-verified end to end.
 
 **Quality bar:** 93 backend tests green; frontend `npx eslint src` and
 `npx tsc --noEmit` clean. Every feature verified in the browser before done.
@@ -43,25 +45,19 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
-1. **Romanian i18n — finish the frontend chrome (server + toggle done).**
-   Backend localization (DECISIONS 016) and the RO/EN header toggle are
-   shipped. Remaining: `useTranslation` across the still-English components
-   (ForecastPage strip labels "7-Day Forecast"/"cached"/"gusts", TrailsPanel,
-   SavedPanel, RecommendPanel, PackingPanel, ProfileDialog, SearchBox,
-   InstabilityBanner's own "Historically unstable…" prefix, AuthModal), plus a
-   frontend map for the score-label enum ("Excellent"…"Dangerous" → RO) — keep
-   the English enum for `SCORE_STYLES`/`SCORE_DOT` styling, translate only the
-   display text. Pattern established in `AppShell` + `LanguageToggle`. Grow
-   `en.json`/`ro.json` as you go; keep them key-for-key in sync.
-2. **Deployment (~Day 16 of the original plan)** — Neon (Postgres+PostGIS),
+1. **Deployment (~Day 16 of the original plan)** — Neon (Postgres+PostGIS),
    Railway (backend; Dockerfile pins Python 3.12, DECISIONS 005), Vercel
    (frontend). Pre-flight: generate a ≥32-byte `JWT_SECRET` (dev one is 26
    bytes — pyjwt warns), run seeds against prod DB, set CORS origins.
-3. **AI: live test or local fallback** — ON HOLD by Marius' choice (no
+2. **AI: live test or local fallback** — ON HOLD by Marius' choice (no
    ANTHROPIC_API_KEY for now). Option A: add key, verify "What to pack?"
    end-to-end (never tested against the real API). Option B: build the
    designed Ollama fallback (DECISIONS 012 addendum) so it works keyless.
-4. **Later / nice-to-have:** ANM nowcasting alerts overlay, GPX import,
+   *i18n note:* when AI is switched on, make the prompt locale-aware (pass the
+   request `lang` into `recommend_equipment` and ask for RO output when
+   `ro`) — the packing summary/items/warnings are the last English-only
+   user-facing strings.
+3. **Later / nice-to-have:** ANM nowcasting alerts overlay, GPX import,
    multi-point trail forecasts, PWA polish, refresh-token rotation
    (DECISIONS 007 trade-off), `is_loop` flag on trails so the UI can label
    one-way vs loop distances, small response cache for AI calls.
@@ -122,6 +118,25 @@ npx eslint src && npx tsc --noEmit       # frontend checks
 ---
 
 ## SESSION LOG (newest first)
+
+### 2026-07-15 — Romanian i18n: frontend chrome pass (feature complete)
+- Wired `useTranslation` through every remaining component: AppShell (done
+  earlier), ForecastPage, DayCard, ScoreBadge, InstabilityBanner, HourlyChart,
+  SearchBox, TrailsPanel, SavedPanel, RecommendPanel, PackingPanel,
+  ProfileDialog, AuthModal, and the shared Dialog close button.
+- `en.json`/`ro.json` rebuilt into a real key structure (common/header/auth/
+  search/forecast/score/instability/chart/trails/saved/recommend/packing/
+  profile), kept key-for-key in sync; profile level names live as translated
+  arrays via `returnObjects`.
+- Weekday names now from `Intl.DateTimeFormat(locale, {weekday:"short"})` —
+  no hand-kept table. Score-label enum translated for display through
+  `score.label.*` while `SCORE_STYLES`/`SCORE_DOT` still key off the English
+  enum (DECISIONS 016). HourlyChart tooltip picks its unit by series
+  `dataKey`, not the now-translated legend name.
+- Verified in browser: default RO shows fully-Romanian chrome + weekdays +
+  labels + auth dialog; EN toggle flips everything (chrome + server text)
+  with no stale flash; console clean; eslint + tsc clean.
+- Only English left: the AI packing plan text (AI on hold) — noted in NEXT UP.
 
 ### 2026-07-15 — Romanian i18n: backend localization + language toggle
 - **Backend (DECISIONS 016):** new `app/i18n` package — EN+RO message tables

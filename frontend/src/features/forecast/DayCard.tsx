@@ -1,4 +1,5 @@
 import { Wind, Droplets, Thermometer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ScoreBadge } from "@/components/ui/badge";
 // import { SCORE_DOT } from "@/components/ui/score-colors";
 import { cn } from "@/lib/utils";
@@ -10,18 +11,19 @@ interface DayCardProps {
   onClick?: () => void;
 }
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatDate(dateStr: string): { dayName: string; dayNum: string } {
+// Weekday name comes from Intl in the active locale (e.g. "Wed" / "mie.") —
+// no hand-kept translation table needed for something the platform localizes.
+function formatDate(dateStr: string, locale: string): { dayName: string; dayNum: string } {
   const d = new Date(dateStr + "T12:00:00"); // noon to avoid timezone-shift issues
   return {
-    dayName: DAY_NAMES[d.getDay()],
+    dayName: new Intl.DateTimeFormat(locale, { weekday: "short" }).format(d),
     dayNum: String(d.getDate()).padStart(2, "0"),
   };
 }
 
 export function DayCard({ day, isSelected, onClick }: DayCardProps) {
-  const { dayName, dayNum } = formatDate(day.date);
+  const { t, i18n } = useTranslation();
+  const { dayName, dayNum } = formatDate(day.date, i18n.language);
 
   return (
     <button
@@ -73,7 +75,7 @@ export function DayCard({ day, isSelected, onClick }: DayCardProps) {
         </div>
         <div className="flex items-center gap-1.5 text-xs text-stone-600">
           <Wind size={12} className="shrink-0 text-stone-400" />
-          <span>{Math.round(day.wind_gusts_max_kmh)} km/h gusts</span>
+          <span>{t("forecast.gusts", { value: Math.round(day.wind_gusts_max_kmh) })}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-stone-600">
           <Droplets size={12} className="shrink-0 text-stone-400" />

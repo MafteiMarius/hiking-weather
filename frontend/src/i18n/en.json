@@ -3,6 +3,15 @@
     "name": "HikeCast",
     "tagline": "Hiker-tuned forecasts for the Carpathians"
   },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "saving": "Saving…",
+    "essential": "Essential",
+    "optional": "Optional",
+    "serverUnreachable": "Could not reach the server."
+  },
   "header": {
     "signIn": "Sign in",
     "signOut": "Sign out"
@@ -11,19 +20,110 @@
     "label": "Language",
     "switchTo": "Switch to {{lang}}"
   },
-  "nav": {
-    "explore": "Explore",
-    "saved": "Saved",
-    "recommendations": "Recommendations",
-    "profile": "Profile"
+  "auth": {
+    "tabSignIn": "Sign in",
+    "tabRegister": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "pleaseWait": "Please wait…",
+    "noAccount": "No account?",
+    "signUp": "Sign up",
+    "haveAccount": "Already have one?",
+    "errPasswordsMismatch": "Passwords do not match.",
+    "errPasswordLength": "Password must be at least 8 characters.",
+    "errUserExists": "An account with this email already exists. Try signing in instead.",
+    "errInvalidEmail": "That doesn't look like a valid email address.",
+    "errServerDown": "Could not reach the server — is the backend running?",
+    "errRegisterGeneric": "Registration failed. Please try again.",
+    "errInvalidCredentials": "Invalid email or password."
   },
-  "footer": {
-    "attribution": "Weather data by Open-Meteo (CC BY 4.0)",
-    "disclaimer": "Forecasts are for planning only. Always check ANM and Salvamont before going into the mountains."
+  "search": {
+    "placeholder": "Search location"
+  },
+  "forecast": {
+    "title": "7-Day Forecast",
+    "bestTrails": "Best trails",
+    "hourlyFor": "— hourly for {{date}}",
+    "whatToPack": "What to pack?",
+    "cached": "cached",
+    "expand": "Expand forecast",
+    "collapse": "Collapse forecast",
+    "loadError": "Could not load forecast — check your connection.",
+    "gusts": "{{value}} km/h gusts",
+    "profile": "Profile",
+    "profileTitle": "Hiking profile",
+    "setHomeHint": "Click the map to set your home location"
   },
   "score": {
-    "go": "Go",
-    "caution": "Caution",
-    "no_go": "No Go"
+    "label": {
+      "Excellent": "Excellent",
+      "Good": "Good",
+      "Fair": "Fair",
+      "Poor": "Poor",
+      "Dangerous": "Dangerous"
+    }
+  },
+  "instability": {
+    "title": "Historically unstable this week of the year."
+  },
+  "chart": {
+    "noData": "No hourly data for this day.",
+    "temp": "Temp",
+    "rain": "Rain",
+    "gusts": "Gusts"
+  },
+  "trails": {
+    "button": "Trails",
+    "difficulty": "Difficulty {{level}}/5"
+  },
+  "saved": {
+    "saveSpot": "Save spot",
+    "saveThisSpot": "Save this spot",
+    "saved": "Saved",
+    "savedTitle": "Saved locations",
+    "saveHeading": "Save {{coords}}",
+    "namePlaceholder": "Name this spot…",
+    "saveError": "Could not save — try again.",
+    "empty": "Nothing saved yet — pick a spot and hit “Save spot”.",
+    "deleteAria": "Delete {{name}}"
+  },
+  "recommend": {
+    "title": "Best trails — {{date}}",
+    "loading": "Checking the forecast on every summit…",
+    "errorGeneric": "Could not rank the trails — try again in a moment.",
+    "empty": "No trails match your profile filters for this day — try widening the distance or difficulty limits in your profile.",
+    "penaltyExperience": "−{{n}} above your experience",
+    "penaltyDistance": "−{{n}} distance",
+    "footer": "Weather score at each summit, adjusted for your profile.",
+    "hidden": "Hidden by your profile limits: {{count}}."
+  },
+  "packing": {
+    "title": "What to pack — {{date}}",
+    "loading": "Reading the forecast and putting a list together…",
+    "errNotConfigured": "AI advice isn't configured on this server (no API key).",
+    "errGeneric": "Could not get packing advice — try again in a moment.",
+    "footer": "AI-generated from the forecast — use your own judgement on the mountain."
+  },
+  "profile": {
+    "loadError": "Could not load your profile — try again in a moment.",
+    "intro": "“Best trails” uses this to filter and rank recommendations for you.",
+    "displayName": "Display name (optional)",
+    "displayNamePlaceholder": "How should we call you?",
+    "experience": "Experience level",
+    "experienceHint": "Trails harder than this rank lower, but still show.",
+    "maxDifficulty": "Maximum difficulty",
+    "maxDifficultyHint": "Trails above this are hidden entirely.",
+    "home": "Home location",
+    "notSet": "Not set",
+    "clearHome": "Clear home location",
+    "chooseOnMap": "Choose on map",
+    "homeHint": "“Choose on map” hides this window — click your home on the map and you’ll be brought back. Without a home, distance is ignored.",
+    "maxDistance": "Maximum distance from home",
+    "distanceError": "Enter a distance between 1 and 5000 km.",
+    "saveError": "Could not save — try again.",
+    "save": "Save profile",
+    "experienceLevels": ["Beginner", "Occasional", "Regular", "Experienced", "Expert"],
+    "difficultyLevels": ["Easy walks", "Easy", "Moderate", "Hard", "Very hard / exposed"]
   }
 }

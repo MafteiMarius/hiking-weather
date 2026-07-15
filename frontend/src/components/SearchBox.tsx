@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, MapPin, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useGeocode } from "@/features/forecast/useForecast";
 import { cn } from "@/lib/utils";
 import type { GeocodeResult } from "@/types/api";
@@ -10,6 +11,7 @@ interface SearchBoxProps {
 }
 
 export function SearchBox({ onSelect, className }: SearchBoxProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -52,7 +54,7 @@ export function SearchBox({ onSelect, className }: SearchBoxProps) {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search location"
+          placeholder={t("search.placeholder")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

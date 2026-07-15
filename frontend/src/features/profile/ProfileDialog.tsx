@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Home, Loader2, MapPin, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,9 @@ interface ProfileDialogProps {
   onPickOnMap: () => void;
 }
 
-// Same 1–5 scale the trail catalogue uses (see DifficultyDots in TrailsPanel);
-// words instead of dots here because the user is choosing, not scanning.
-const EXPERIENCE_LABELS = ["Beginner", "Occasional", "Regular", "Experienced", "Expert"];
-const DIFFICULTY_LABELS = ["Easy walks", "Easy", "Moderate", "Hard", "Very hard / exposed"];
+// Level names ("Beginner"…"Expert", "Easy walks"…"Very hard") live in the
+// translation bundle as arrays (profile.experienceLevels / difficultyLevels),
+// same 1–5 scale the trail catalogue uses (see DifficultyDots in TrailsPanel).
 
 /** Row of 1–5 toggle buttons with the selected level named beside them. */
 function LevelPicker({
@@ -76,19 +76,18 @@ export function ProfileDialog({
   pickedHome,
   onPickOnMap,
 }: ProfileDialogProps) {
+  const { t } = useTranslation();
   const { data: profile, isPending, isError } = useProfile(open);
 
   return (
-    <Dialog open={open} onClose={onClose} hidden={hidden} title="Hiking profile">
+    <Dialog open={open} onClose={onClose} hidden={hidden} title={t("forecast.profileTitle")}>
       {isPending && (
         <div className="flex h-40 items-center justify-center">
           <Loader2 size={20} className="animate-spin text-stone-400" />
         </div>
       )}
       {isError && (
-        <p className="py-4 text-sm text-red-600">
-          Could not load your profile — try again in a moment.
-        </p>
+        <p className="py-4 text-sm text-red-600">{t("profile.loadError")}</p>
       )}
       {/* Form is a child component so its useState initialisers run only once
           the profile exists — no effect needed to sync fetched data in. */}
@@ -115,6 +114,9 @@ function ProfileForm({
   onPickOnMap: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
+  const experienceLabels = t("profile.experienceLevels", { returnObjects: true }) as string[];
+  const difficultyLabels = t("profile.difficultyLevels", { returnObjects: true }) as string[];
   const [displayName, setDisplayName] = useState(profile.display_name ?? "");
   const [experience, setExperience] = useState(profile.experience_level);
   const [maxDifficulty, setMaxDifficulty] = useState(profile.max_difficulty);
@@ -156,46 +158,42 @@ function ProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-xs text-stone-500">
-        “Best trails” uses this to filter and rank recommendations for you.
-      </p>
+      <p className="text-xs text-stone-500">{t("profile.intro")}</p>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-stone-600">Display name (optional)</span>
+        <span className="text-xs font-medium text-stone-600">{t("profile.displayName")}</span>
         <Input
           maxLength={80}
-          placeholder="How should we call you?"
+          placeholder={t("profile.displayNamePlaceholder")}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
         />
       </label>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-stone-600">Experience level</span>
+        <span className="text-xs font-medium text-stone-600">{t("profile.experience")}</span>
         <LevelPicker
           value={experience}
           onChange={setExperience}
-          labels={EXPERIENCE_LABELS}
-          name="Experience level"
+          labels={experienceLabels}
+          name={t("profile.experience")}
         />
-        <span className="text-xs text-stone-400">
-          Trails harder than this rank lower, but still show.
-        </span>
+        <span className="text-xs text-stone-400">{t("profile.experienceHint")}</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-stone-600">Maximum difficulty</span>
+        <span className="text-xs font-medium text-stone-600">{t("profile.maxDifficulty")}</span>
         <LevelPicker
           value={maxDifficulty}
           onChange={setMaxDifficulty}
-          labels={DIFFICULTY_LABELS}
-          name="Maximum difficulty"
+          labels={difficultyLabels}
+          name={t("profile.maxDifficulty")}
         />
-        <span className="text-xs text-stone-400">Trails above this are hidden entirely.</span>
+        <span className="text-xs text-stone-400">{t("profile.maxDifficultyHint")}</span>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-stone-600">Home location</span>
+        <span className="text-xs font-medium text-stone-600">{t("profile.home")}</span>
         <div className="flex items-center gap-2">
           <Home size={14} className="shrink-0 text-green-700" />
           {home ? (
@@ -207,13 +205,13 @@ function ProfileForm({
                 type="button"
                 onClick={() => setHome(null)}
                 className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                aria-label="Clear home location"
+                aria-label={t("profile.clearHome")}
               >
                 <X size={14} />
               </button>
             </>
           ) : (
-            <span className="text-sm text-stone-400">Not set</span>
+            <span className="text-sm text-stone-400">{t("profile.notSet")}</span>
           )}
           <Button
             type="button"
@@ -223,17 +221,14 @@ function ProfileForm({
             onClick={onPickOnMap}
           >
             <MapPin size={14} />
-            Choose on map
+            {t("profile.chooseOnMap")}
           </Button>
         </div>
-        <span className="text-xs text-stone-400">
-          “Choose on map” hides this window — click your home on the map and
-          you’ll be brought back. Without a home, distance is ignored.
-        </span>
+        <span className="text-xs text-stone-400">{t("profile.homeHint")}</span>
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-stone-600">Maximum distance from home</span>
+        <span className="text-xs font-medium text-stone-600">{t("profile.maxDistance")}</span>
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -246,16 +241,16 @@ function ProfileForm({
           <span className="text-sm text-stone-500">km</span>
         </div>
         {!distanceValid && (
-          <span className="text-xs text-red-600">Enter a distance between 1 and 5000 km.</span>
+          <span className="text-xs text-red-600">{t("profile.distanceError")}</span>
         )}
       </label>
 
       {update.isError && (
-        <p className="text-xs text-red-600">Could not save — try again.</p>
+        <p className="text-xs text-red-600">{t("profile.saveError")}</p>
       )}
 
       <Button type="submit" disabled={update.isPending || !distanceValid}>
-        {update.isPending ? "Saving…" : "Save profile"}
+        {update.isPending ? t("common.saving") : t("profile.save")}
       </Button>
     </form>
   );

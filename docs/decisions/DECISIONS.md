@@ -288,9 +288,12 @@ results are proper nouns; deliberately not language-keyed.)
 
 **Trade-off / status:** EN and RO tables must be kept key-for-key in sync by
 hand — a missing key degrades to the English fallback, never a crash (tested).
-Backend + language plumbing shipped and browser-verified; the mechanical pass
-translating every component's chrome (and the score-label enum map) is the
-remaining slice.
+Backend, language plumbing, and the full component-chrome pass are all shipped
+and browser-verified in both languages. Weekday names come from `Intl` (no
+hand-kept table); the score-label enum is translated for display only. The one
+remaining English surface is the AI packing plan (summary/items/warnings),
+left until AI comes off hold — the prompt should then request output in the
+request `lang`.
 
 ---
 

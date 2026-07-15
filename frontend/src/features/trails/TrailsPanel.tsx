@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Clock, Loader2, Mountain, TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useTrails } from "@/features/trails/useTrails";
 import { cn } from "@/lib/utils";
@@ -17,8 +18,9 @@ function formatDuration(minutes: number): string {
 
 /** 1-5 difficulty as filled/empty dots — reads at a glance without a legend. */
 function DifficultyDots({ level }: { level: number }) {
+  const { t } = useTranslation();
   return (
-    <span className="flex gap-0.5" title={`Difficulty ${level}/5`}>
+    <span className="flex gap-0.5" title={t("trails.difficulty", { level })}>
       {[1, 2, 3, 4, 5].map((i) => (
         <span
           key={i}
@@ -37,6 +39,7 @@ function DifficultyDots({ level }: { level: number }) {
  * grouped by massif. Click a trail to fly to its trailhead.
  */
 export function TrailsPanel({ onSelect }: TrailsPanelProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data: trails, isLoading } = useTrails(open);
 
@@ -60,7 +63,7 @@ export function TrailsPanel({ onSelect }: TrailsPanelProps) {
           size={14}
           className={cn("transition-colors", open ? "fill-green-700 text-green-700" : "fill-none text-stone-700")}
         />
-        Trails
+        {t("trails.button")}
       </Button>
 
       {open && (

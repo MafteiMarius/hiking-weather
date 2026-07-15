@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import {
   Backpack,
@@ -86,6 +87,7 @@ export function ForecastPage() {
   // Last picked place name — prefills the "save spot" form
   const [placeName, setPlaceName] = useState("");
 
+  const { t } = useTranslation();
   const { data: me } = useMe();
   const { data: forecast, isLoading, isError } = useForecast(lat, lng);
 
@@ -188,10 +190,10 @@ export function ForecastPage() {
               size="sm"
               variant="outline"
               onClick={() => setProfileOpen(true)}
-              title="Hiking profile"
+              title={t("forecast.profileTitle")}
             >
               <UserCog size={14} />
-              <span className="hidden sm:inline">Profile</span>
+              <span className="hidden sm:inline">{t("forecast.profile")}</span>
             </Button>
             <SavedPanel
               lat={lat}
@@ -209,14 +211,12 @@ export function ForecastPage() {
           <div className="absolute top-3 left-1/2 z-[600] -translate-x-1/2">
             <div className="flex items-center gap-2 rounded-full border border-green-700 bg-white px-4 py-1.5 shadow-lg">
               <Home size={13} className="text-green-700" />
-              <span className="text-sm text-stone-700">
-                Click the map to set your home location
-              </span>
+              <span className="text-sm text-stone-700">{t("forecast.setHomeHint")}</span>
               <button
                 onClick={() => setPickingHome(false)}
                 className="text-xs font-medium text-stone-400 hover:text-stone-700"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -239,7 +239,7 @@ export function ForecastPage() {
         <div className="flex items-center gap-2 px-4 py-2">
           <Mountain size={14} className="text-green-700" />
           <span className="text-xs font-semibold uppercase tracking-widest text-stone-500">
-            7-Day Forecast
+            {t("forecast.title")}
           </span>
           {me && recsDate && !stripCollapsed && (
             <button
@@ -247,13 +247,13 @@ export function ForecastPage() {
               className="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors"
             >
               <Compass size={12} className="text-green-700" />
-              Best trails
+              {t("forecast.bestTrails")}
             </button>
           )}
           {!stripCollapsed && openDay && (
             <>
               <span className="text-xs text-stone-400">
-                — hourly for {openDay.date}
+                {t("forecast.hourlyFor", { date: openDay.date })}
               </span>
               {me && (
                 <button
@@ -261,19 +261,18 @@ export function ForecastPage() {
                   className="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 py-0.5 text-xs font-medium text-stone-700 hover:bg-stone-100 transition-colors"
                 >
                   <Backpack size={12} className="text-green-700" />
-                  What to pack?
+                  {t("forecast.whatToPack")}
                 </button>
               )}
             </>
           )}
           {forecast?.cached && !stripCollapsed && (
-            
-            <span className="ml-auto text-xs text-stone-400">cached</span>
+            <span className="ml-auto text-xs text-stone-400">{t("forecast.cached")}</span>
           )}
           <button
             onClick={() => setStripCollapsed(!stripCollapsed)}
             className={cnStripToggle(forecast?.cached && !stripCollapsed)}
-            aria-label={stripCollapsed ? "Expand forecast" : "Collapse forecast"}
+            aria-label={stripCollapsed ? t("forecast.expand") : t("forecast.collapse")}
           >
             {stripCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -306,7 +305,7 @@ export function ForecastPage() {
 
             {isError && (
               <div className="flex h-44 items-center justify-center text-sm text-stone-500">
-                Could not load forecast — check your connection.
+                {t("forecast.loadError")}
               </div>
             )}
 

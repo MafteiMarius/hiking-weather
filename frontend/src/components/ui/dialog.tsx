@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface DialogProps {
@@ -17,6 +18,7 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onClose, title, children, className, hidden }: DialogProps) {
+  const { t } = useTranslation();
   // Close on Escape key — suspended while hidden so Escape can mean
   // "cancel the map interaction" instead of silently closing the dialog.
   useEffect(() => {
@@ -61,7 +63,7 @@ export function Dialog({ open, onClose, title, children, className, hidden }: Di
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X size={18} />
           </button>

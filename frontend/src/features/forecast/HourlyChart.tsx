@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import type { HourForecast } from "@/types/api";
 
 interface HourlyChartProps {
@@ -26,6 +27,7 @@ interface ChartPoint {
 }
 
 export function HourlyChart({ hours, date }: HourlyChartProps) {
+  const { t } = useTranslation();
   // hours can be missing when the service worker replays a response cached
   // before hourly support — degrade to the empty state, never crash.
   const points: ChartPoint[] = (hours ?? [])
@@ -40,7 +42,7 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
   if (points.length === 0) {
     return (
       <div className="flex h-40 items-center justify-center text-sm text-stone-400">
-        No hourly data for this day.
+        {t("chart.noData")}
       </div>
     );
   }
@@ -80,9 +82,12 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
               border: "1px solid #e7e5e4",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
-            formatter={(value, name) => {
-              if (name === "Temp") return [`${value} °C`, name];
-              if (name === "Rain") return [`${value} mm`, name];
+            // Unit is chosen by the series' stable dataKey, not its (now
+            // translated) display name, so localization can't break it.
+            formatter={(value, name, item) => {
+              const key = (item as { dataKey?: string })?.dataKey;
+              if (key === "temp") return [`${value} °C`, name];
+              if (key === "precip") return [`${value} mm`, name];
               return [`${value} km/h`, name];
             }}
             labelFormatter={(hour) => `${hour}:00`}
@@ -91,7 +96,7 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
           <Bar
             yAxisId="precip"
             dataKey="precip"
-            name="Rain"
+            name={t("chart.rain")}
             fill="#93c5fd"
             radius={[2, 2, 0, 0]}
           />
@@ -99,7 +104,7 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
             yAxisId="main"
             type="monotone"
             dataKey="temp"
-            name="Temp"
+            name={t("chart.temp")}
             stroke="#ea580c"
             strokeWidth={2}
             dot={false}
@@ -108,7 +113,7 @@ export function HourlyChart({ hours, date }: HourlyChartProps) {
             yAxisId="main"
             type="monotone"
             dataKey="gusts"
-            name="Gusts"
+            name={t("chart.gusts")}
             stroke="#78716c"
             strokeWidth={1.5}
             strokeDasharray="4 3"

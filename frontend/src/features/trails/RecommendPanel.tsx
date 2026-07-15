@@ -1,5 +1,7 @@
 import { isAxiosError } from "axios";
 import { Home, Loader2, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Dialog } from "@/components/ui/dialog";
 import { SCORE_STYLES } from "@/components/ui/score-colors";
 import { useRecommendations } from "@/features/trails/useRecommendations";
@@ -13,18 +15,19 @@ interface RecommendPanelProps {
   onSelect: (trail: Trail) => void; // fly the map to the trailhead
 }
 
-function errorMessage(err: unknown): string {
-  if (isAxiosError(err) && !err.response) return "Could not reach the server.";
-  return "Could not rank the trails — try again in a moment.";
+function errorMessage(err: unknown, t: TFunction): string {
+  if (isAxiosError(err) && !err.response) return t("common.serverUnreachable");
+  return t("recommend.errorGeneric");
 }
 
 function PenaltyHint({ item }: { item: RecommendationItem }) {
+  const { t } = useTranslation();
   const parts: string[] = [];
   if (item.difficulty_penalty > 0) {
-    parts.push(`−${item.difficulty_penalty} above your experience`);
+    parts.push(t("recommend.penaltyExperience", { n: item.difficulty_penalty }));
   }
   if (item.distance_penalty > 0 && item.distance_from_home_km !== null) {
-    parts.push(`−${item.distance_penalty} distance`);
+    parts.push(t("recommend.penaltyDistance", { n: item.distance_penalty }));
   }
   if (parts.length === 0) return null;
   return <span className="text-xs text-stone-400">{parts.join(" · ")}</span>;
@@ -37,6 +40,7 @@ function PenaltyHint({ item }: { item: RecommendationItem }) {
  * black box.
  */
 export function RecommendPanel({ date, open, onClose, onSelect }: RecommendPanelProps) {
+  const { t } = useTranslation();
   const recs = useRecommendations(date, open);
 
   if (!open) return null;
@@ -44,25 +48,20 @@ export function RecommendPanel({ date, open, onClose, onSelect }: RecommendPanel
   const items = recs.data?.items ?? [];
 
   return (
-    <Dialog open={open} onClose={onClose} title={`Best trails — ${date}`}>
+    <Dialog open={open} onClose={onClose} title={t("recommend.title", { date })}>
       {recs.isPending && (
         <div className="flex flex-col items-center gap-3 py-8">
           <Loader2 size={24} className="animate-spin text-green-700" />
-          <p className="text-sm text-stone-500">
-            Checking the forecast on every summit…
-          </p>
+          <p className="text-sm text-stone-500">{t("recommend.loading")}</p>
         </div>
       )}
 
       {recs.isError && (
-        <p className="py-4 text-sm text-red-600">{errorMessage(recs.error)}</p>
+        <p className="py-4 text-sm text-red-600">{errorMessage(recs.error, t)}</p>
       )}
 
       {recs.data && items.length === 0 && (
-        <p className="py-4 text-sm text-stone-600">
-          No trails match your profile filters for this day — try widening the
-          distance or difficulty limits in your profile.
-        </p>
+        <p className="py-4 text-sm text-stone-600">{t("recommend.empty")}</p>
       )}
 
       {items.length > 0 && (
@@ -100,7 +99,7 @@ export function RecommendPanel({ date, open, onClose, onSelect }: RecommendPanel
                     <span>
                       {Math.round(item.temp_min_c)}°/{Math.round(item.temp_max_c)}°C
                     </span>
-                    <span>{Math.round(item.wind_gusts_max_kmh)} km/h gusts</span>
+                    <span>{t("forecast.gusts", { value: Math.round(item.wind_gusts_max_kmh) })}</span>
                     {item.distance_from_home_km !== null && (
                       <span className="flex items-center gap-1">
                         <Home size={10} />
@@ -116,9 +115,9 @@ export function RecommendPanel({ date, open, onClose, onSelect }: RecommendPanel
 
           <p className="flex items-center gap-1.5 text-xs text-stone-400">
             <Sparkles size={12} />
-            Weather score at each summit, adjusted for your profile.
+            {t("recommend.footer")}
             {recs.data && recs.data.excluded > 0 && (
-              <> {recs.data.excluded} trails hidden by your profile limits.</>
+              <> {t("recommend.hidden", { count: recs.data.excluded })}</>
             )}
           </p>
         </div>
