@@ -17,7 +17,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """Generate SQL script without a live DB connection."""
-    url = get_settings().database_url
+    url = get_settings().sqlalchemy_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -36,7 +36,12 @@ def do_run_migrations(connection):  # type: ignore[no-untyped-def]
 
 async def run_migrations_online() -> None:
     """Run migrations against a live DB using the asyncpg engine."""
-    connectable = create_async_engine(get_settings().database_url, echo=False)
+    settings = get_settings()
+    connectable = create_async_engine(
+        settings.sqlalchemy_url,
+        echo=False,
+        connect_args=settings.sqlalchemy_connect_args,
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

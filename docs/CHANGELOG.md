@@ -13,7 +13,7 @@
 
 ---
 
-## CURRENT STATE (updated 2026-07-14)
+## CURRENT STATE (updated 2026-08-10)
 
 18-day portfolio project (FMI) + real-use tool; started 2026-06-23; solo dev
 (Marius) pair-programming with an AI agent. Backend: FastAPI + SQLAlchemy 2
@@ -35,7 +35,11 @@ score-label enum is translated for display (English enum kept for styling),
 and a header RO/EN toggle (default RO) flips the whole UI. Both languages
 browser-verified end to end.
 
-**Quality bar:** 93 backend tests green; frontend `npx eslint src` and
+**Deployment-ready, not yet deployed:** the container, database-URL handling,
+and Vercel proxy config are built and locally verified; the three provider
+steps that need Marius' accounts are not done. Runbook: `docs/DEPLOYMENT.md`.
+
+**Quality bar:** 107 backend tests green; frontend `npx eslint src` and
 `npx tsc --noEmit` clean. Every feature verified in the browser before done.
 
 **Data caveats:** trail distances/durations are one-way planning estimates,
@@ -45,10 +49,24 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
-1. **Deployment (~Day 16 of the original plan)** — Neon (Postgres+PostGIS),
-   Railway (backend; Dockerfile pins Python 3.12, DECISIONS 005), Vercel
-   (frontend). Pre-flight: generate a ≥32-byte `JWT_SECRET` (dev one is 26
-   bytes — pyjwt warns), run seeds against prod DB, set CORS origins.
+1. **Deployment — code side DONE, provider side pending.** Follow
+   `docs/DEPLOYMENT.md` start to finish. Stack is Neon + Render + Vercel, all
+   free tiers, $0/month, no card (DECISIONS 019). It needs three things only
+   Marius can do: create the Neon project (+ `CREATE EXTENSION postgis,
+   pgcrypto`), create the Render service from `render.yaml` (Blueprint) and
+   answer the two prompts, and import the frontend on Vercel.
+   **Before the Vercel deploy, replace `REPLACE-ME.onrender.com` in
+   `frontend/vercel.json` with the real Render domain** — it is a placeholder.
+   Seed trails **from the laptop** with `DATABASE_URL` pointed at Neon: Render's
+   free tier has no shell. Then run the post-deploy checklist; the browser
+   cookie steps are the ones that matter (DECISIONS 017).
+   *Demo note:* the free backend sleeps after 15 min idle and takes ~1 min to
+   wake — open the app a few minutes before presenting.
+   *Loose end:* `backend/requirements.txt` is a stale pip-freeze from an
+   unrelated environment (pandas, openmeteo_requests; missing sqlalchemy,
+   alembic, asyncpg). Nothing reads it — `pyproject.toml` is authoritative and
+   the Dockerfile installs from it — but it is a trap for any tool that
+   auto-detects it. Recommend deleting.
 2. **AI: live test or local fallback** — ON HOLD by Marius' choice (no
    ANTHROPIC_API_KEY for now). Option A: add key, verify "What to pack?"
    end-to-end (never tested against the real API). Option B: build the
@@ -118,6 +136,80 @@ npx eslint src && npx tsc --noEmit       # frontend checks
 ---
 
 ## SESSION LOG (newest first)
+
+### 2026-08-10 — Deployment prep (code side complete, verified in Docker)
+
+Audited the deploy path before touching anything; found six blockers, fixed
+five in code and documented the sixth.
+
+- **Cookie topology (DECISIONS 017).** `SameSite=Lax` is hardcoded, so a
+  Vercel-frontend/Railway-backend split would have made every API call
+  cross-site: login 200s, then every authenticated request 401s, silently.
+  Chose a **Vercel rewrite** (`frontend/vercel.json`, `/api/:path*` → Railway)
+  over relaxing to `SameSite=None`, so requests stay same-origin and the
+  cookies stay first-party. **Zero backend code changed** — the stricter cookie
+  attribute survives, and Safari ITP / Brave can't break login.
+  Guard-rail: `frontend/.env.production` pins `VITE_API_URL=/api/v1`, because
+  overriding it in the Vercel dashboard silently reintroduces the bug.
+- **Managed-Postgres URLs (DECISIONS 018).** Neon's
+  `postgresql://…?sslmode=require` breaks twice — wrong dialect (reaches for
+  psycopg2) and `sslmode` is a libpq param asyncpg rejects. New pure
+  `normalize_database_url()` in `core/config.py` + `Settings.sqlalchemy_url` /
+  `.sqlalchemy_connect_args`; `db/session.py` and `alembic/env.py` both go
+  through them. Engine also gained `pool_pre_ping` + `pool_recycle=280` for
+  free-tier idle disconnects. **+14 hand-written tests** (107 total).
+- **Dockerfile rebuilt.** Was installing `.[dev]` (pytest in prod), hardcoding
+  port 8000 while Railway injects `$PORT`, and never running migrations.
+  Now: dependency layer cached separately from code, no compiler toolchain
+  (all deps have cp312 wheels — saved ~300 MB), non-root user, `$PORT`, and
+  `alembic upgrade head` in the start command (Railway has no release phase).
+  **386 MB** image.
+- **Added `backend/.dockerignore`.** Docker does not read `.gitignore`, so
+  `COPY . .` was shipping `backend/venv/` and would bake a `.env` into a layer.
+- **`pyproject.toml`:** explicit `[build-system]` + `packages.find` — setuptools
+  auto-discovery saw `app/` and `alembic/` and refused to guess, which broke
+  the non-editable install. (Found by building, not by reading.)
+- **Verified in Docker, not just theorised:** built the image, ran it against
+  the local DB with a deliberately libpq-style `postgresql://` URL to exercise
+  the normalization → migrations applied, server booted, `/health` ok, RO
+  forecast returned "Înnorat", login set both cookies, and authed
+  `/profile` + `/recommendations` round-tripped. Frontend `npm run build`
+  clean; confirmed the bundle bakes `baseURL:"/api/v1"` and no `localhost`.
+- **Docs:** new `docs/DEPLOYMENT.md` runbook (provider steps, env-var table,
+  post-deploy checklist incl. the browser cookie tests, accepted gaps);
+  DECISIONS 017 + 018; `.env.example` production notes; README status/roadmap
+  refreshed (it still advertised Romanian UI and the profile editor as todo).
+- **Not done, deliberately:** the three provider steps need Marius' accounts.
+  Pre-existing ruff `I001` in `alembic/env.py` left alone (unrelated to this
+  change, would muddy the commit split).
+
+**Same session — retargeted to a $0 stack (DECISIONS 019).** Marius' goal is an
+exam demo in September 2026, not traffic, so cost beat convenience.
+
+- Priced it out: the frontend was never the cost (Vercel Hobby and Netlify Free
+  are both $0). **Railway** was — its free tier is gone in practice ($1/month of
+  credits ≈ six days of a 0.5 GB container), Hobby is a $5/month minimum. Swapped
+  it for **Render's free instance type**: $0, Docker-native, 750 instance-hours.
+- **Counter-intuitive finding, documented so it isn't re-litigated:** Netlify's
+  free tier is now the *more* restrictive of the two frontends — credit-based,
+  15 credits per production deploy out of 300/month ≈ 20 deploys, shared with
+  bandwidth, project pauses when exhausted (Vercel: 100/day). Netlify's proxy
+  also times out ~30 s vs Vercel's documented 120 s. Stayed on Vercel.
+- Added `render.yaml` (Blueprint: docker runtime, free plan, frankfurt,
+  `/health` check, `JWT_SECRET` via `generateValue` so the short dev secret can
+  never leak in). Verified the exact build Render will run —
+  `docker build -f ./backend/Dockerfile ./backend` from the repo root — because
+  `dockerfilePath`/`dockerContext` resolve from the repo root, not the service
+  root.
+- **Render free has no shell**, so trail seeding moved to "run it from the
+  laptop against the Neon URL" — which only works because DECISIONS 018 makes
+  the app swallow a provider connection string verbatim.
+- Accepted: the backend sleeps after 15 min idle, ~1 min cold start. Handled
+  procedurally (warm the app before presenting), not with a keep-alive hack.
+- Dockerfile comments de-Railway'd; nothing host-specific is in the image, so
+  moving hosts stays a config change. `vercel.json` destination now
+  `REPLACE-ME.onrender.com`. DEPLOYMENT.md rewritten with a cost table and the
+  cold-start warning; README infra/roadmap updated.
 
 ### 2026-07-15 — Romanian i18n: frontend chrome pass (feature complete)
 - Wired `useTranslation` through every remaining component: AppShell (done

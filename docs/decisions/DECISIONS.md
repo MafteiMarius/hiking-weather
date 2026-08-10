@@ -297,6 +297,123 @@ request `lang`.
 
 ---
 
+## 017 — Production: Vercel proxies /api to the backend, keeping cookies first-party
+
+**The problem.** Auth is httpOnly cookies with `SameSite=Lax`
+(`api/v1/endpoints/auth.py`, `core/auth.py`). Split across
+`hikecast.vercel.app` and a separate backend host (`*.onrender.com`), every API
+call becomes *cross-site*, and a `Lax` cookie is by definition not sent on
+cross-site requests. Login would return 200 and set the cookie; every authenticated
+request afterwards would 401. The failure is silent and looks like a broken
+session rather than a config mistake.
+
+**Options considered.**
+
+1. **`SameSite=None; Secure`** — make the attribute configurable, relax it in
+   production, add exact CORS origins with `allow_credentials`. Works, and it's
+   the textbook answer. But the cookie is then third-party: Safari's ITP blocks
+   it outright, Firefox strict mode and Brave block it, and most ad blockers do
+   too. For a portfolio link that gets opened on someone else's browser, "login
+   silently fails for a third of visitors" is the worst possible failure mode.
+2. **Vercel rewrite** (`frontend/vercel.json`) — the browser only ever talks to
+   the Vercel domain, which forwards `/api/*` to the backend server-side.
+   Requests are same-origin, the cookie stays first-party, `SameSite=Lax` keeps
+   working **unchanged**, and CORS stops being load-bearing.
+
+**Decision: the rewrite.** It removes the failure mode instead of configuring
+around it, and it leaves the stricter cookie attribute in place — `Lax` is
+meaningful CSRF protection that option 1 would have traded away for nothing.
+Zero backend code changed as a result.
+
+**Cost accepted:** one extra network hop through Vercel's edge on every API
+call, and the API is now reachable at two addresses (via Vercel, and the
+backend host directly). The latter is why `CORS_ORIGINS` is still set properly
+rather than dropped.
+
+**The trap this creates.** Setting `VITE_API_URL` to the backend URL in the
+Vercel dashboard bypasses the proxy and reintroduces the exact bug. Guarded by
+committing `frontend/.env.production` with the relative `/api/v1`, with the
+reasoning in the file, plus a warning in `docs/DEPLOYMENT.md`. A dashboard
+setting nobody can see from the repo was too easy to get wrong.
+
+---
+
+## 018 — Managed-Postgres URLs are normalized in config, not by hand
+
+**Problem.** Neon (and Railway, Supabase, Heroku) hand out libpq connection
+strings: `postgresql://user:pass@host/db?sslmode=require`. Two things in that
+break this app — SQLAlchemy needs `postgresql+asyncpg://` to select the async
+dialect (a bare `postgresql://` reaches for psycopg2, which isn't installed),
+and `sslmode` is a libpq parameter that asyncpg rejects at connect time.
+
+**Decision:** `normalize_database_url()` in `app/core/config.py` translates
+both, exposed as `Settings.sqlalchemy_url` / `.sqlalchemy_connect_args`. Every
+connection opener goes through them (`db/session.py`, `alembic/env.py`).
+
+**Why translate rather than document "edit the string first":** a hand-edited
+connection string is a one-time manual step that silently rots — it has to be
+redone on every credential rotation, and getting it wrong produces an obscure
+`TypeError` from deep inside asyncpg. Doing it in code means the provider's
+string is pasted verbatim and the behaviour is unit-testable
+(`tests/test_config.py`, 14 hand-written cases) without a live managed
+database, which we can't reach from the test suite.
+
+**Why not rely on the dialect:** SQLAlchemy's asyncpg dialect has handled
+`sslmode` inconsistently across versions. Owning the translation makes the
+behaviour version-independent and greppable.
+
+**Also here:** `pool_pre_ping` + `pool_recycle=280` on the engine, because
+managed Postgres drops idle connections and the pool would otherwise hand out
+a dead one after an idle spell — the classic "first request after a quiet
+period fails" bug on free tiers.
+
+---
+
+## 019 — Hosting: Neon + Render + Vercel, all free tiers
+
+**Context.** The deployment exists to be presented at an exam in September 2026
+and to be linkable afterwards. It is not expected to carry real traffic. So the
+objective is **$0/month with a demo that doesn't embarrass us**, not
+throughput.
+
+**What actually costs money.** Not the frontend — Vercel Hobby and Netlify Free
+are both $0. The only priced component is the **backend container**: Railway
+retired its free tier (the "Free" plan grants $1/month of credits, and memory
+alone for a 0.5 GB service runs ~$5/month at their per-second rate, so it dies
+after about six days). Railway Hobby is a $5/month *minimum*, not a cap.
+
+**Decision:** Render's free instance type for the backend, Neon free for the
+database, Vercel Hobby for the frontend. Total $0, no credit card anywhere.
+
+**Cost accepted — the backend sleeps.** Render spins a free service down after
+15 minutes without inbound traffic; waking takes about a minute. Mitigation is
+procedural, not technical: open the app a few minutes before presenting. A
+keep-alive pinger would technically fit inside the 750 instance-hours/month
+allowance (a 30-day month is 720 hours), but Render states there is no
+supported way to prevent spin-down, so the demo does not depend on it.
+
+**Why not Netlify, despite it being the "free" one people reach for.** Its free
+tier moved to credits: 300/month, **15 per production deploy** — about 20
+production deploys a month, shared with bandwidth and requests, after which the
+project *pauses*. Vercel Hobby allows 100 deploys per day. Netlify's proxy also
+times out around 30 s against Vercel's documented 120 s, which matters if the
+Ollama fallback (20–60 s calls, DECISIONS 012) is ever built. For a project
+under active iteration before a deadline, Netlify was the more restrictive
+choice despite the identical $0 price.
+
+**Consequence worth remembering: no shell on Render free.** Seeding therefore
+runs from a developer laptop with `DATABASE_URL` pointed at Neon rather than
+from a server shell. That is only possible because the app accepts a provider
+connection string verbatim (DECISIONS 018) — the two decisions support each
+other.
+
+**Reversibility is the real safeguard.** Nothing host-specific leaked into the
+image: the Dockerfile binds `$PORT` and reads plain env vars, so `render.yaml`
+is the only Render-shaped artefact in the repo. Moving to a paid always-warm
+instance, or back to Railway, is a config change rather than a rewrite.
+
+---
+
 ## 006 — recharts v3 (not v2)
 
 **Original scaffold had:** `recharts ^3.8.1`  

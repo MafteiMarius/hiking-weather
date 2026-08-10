@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "hikecast-backend"
 version = "0.1.0"
@@ -29,6 +33,14 @@ dev = [
     "mypy>=1.10",
     "types-passlib",
 ]
+
+# ── Packaging ───────────────────────────────────────────────────────────────
+# Declared explicitly because setuptools' automatic flat-layout discovery sees
+# two top-level directories (`app` and `alembic`) and refuses to guess which is
+# the package — it errors out rather than picking one. Only `app` ships;
+# `alembic` is invoked as a CLI against files on disk, not imported.
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 # ── Ruff (linter + formatter, replaces flake8/black/isort) ─────────────────
 [tool.ruff]

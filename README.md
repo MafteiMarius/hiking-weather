@@ -42,10 +42,16 @@ Work in progress. What works today:
 - **Forecast caching** — the backend fetches Open-Meteo once per ~1 km grid
   cell and caches the payload in Postgres for 30 minutes; the frontend never
   talks to Open-Meteo directly.
+- **Romanian and English** — a header toggle flips the whole UI, Romanian by
+  default. Generated text (weather descriptions, score reasons, instability
+  warnings) is localized server-side via `Accept-Language`; static chrome is
+  localized in the client.
+- **Hiking profile** — experience level, difficulty cap, home location picked
+  on the map, and a maximum travel distance, all feeding the recommendations.
 - **Installable PWA scaffold** — map tiles and the last forecasts are cached
   by a service worker.
 
-Planned next (see Roadmap): Romanian UI, production deployment.
+Planned next (see Roadmap): production deployment.
 
 ## Setup guide
 
@@ -206,8 +212,10 @@ PostgreSQL 16 with PostGIS 3.4, fastapi-users (Argon2id), httpx + tenacity.
 TanStack Query v5, react-leaflet with OpenTopoMap tiles, lucide-react,
 vite-plugin-pwa.
 
-**Infra.** Docker Compose locally. Planned production: Neon for Postgres,
-Railway for the backend, Vercel for the frontend.
+**Infra.** Docker Compose locally. Production: Neon for Postgres, Render for the
+backend (container, `render.yaml`), Vercel for the frontend — all free tiers,
+with Vercel proxying `/api/*` to Render so the auth cookies stay first-party.
+Runbook: `docs/DEPLOYMENT.md`.
 
 ## Project layout
 
@@ -247,10 +255,8 @@ seeder (idempotent + update mode), and the recommendation ranking
 
 Progress and per-session details: `docs/CHANGELOG.md`.
 
-- Profile UI for home location (used by recommendations; currently only
-  settable via the API).
-- Romanian UI (i18n is wired, strings not yet translated).
-- Production deployment: Neon (Postgres), Railway (backend), Vercel (frontend).
+- Production deployment: Neon (Postgres), Render (backend), Vercel (frontend).
+  Runbook: `docs/DEPLOYMENT.md`.
 - AI packing advice live test, or a local-LLM (Ollama) fallback so it works
   without an API key (design in `docs/decisions/DECISIONS.md`, 012).
 - ANM nowcasting alerts overlay, GPX import, multi-point trail forecasts.

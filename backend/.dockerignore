@@ -1,0 +1,30 @@
+# Docker does NOT read .gitignore — this file has to repeat it.
+# Without it, `COPY . .` bakes the local virtualenv (hundreds of MB of Windows
+# binaries that cannot even run in a Linux image) and any local .env secrets
+# into the published image layers.
+
+venv/
+.venv/
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# Secrets — these come from the platform's environment variables in production,
+# never from a file in the image.
+.env
+.env.*
+!.env.example
+
+# Test + tooling state that has no place in a runtime image.
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache.sqlite
+htmlcov/
+.coverage
+
+.git/
+.gitignore
+Dockerfile
+.dockerignore
