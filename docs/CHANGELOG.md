@@ -49,16 +49,12 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
-0. **Make the backend able to fetch forecasts again.** Cause is known: shared
-   minutely rate limit on Render's egress IP (429, DECISIONS 020). Mitigated by
-   cache warming, not fixed. Next step, in order:
-   a. Deploy `frontend/vercel.json` (already has the `/upstream/open-meteo/*`
-      rewrite) and curl it — see "The unresolved part" in `docs/DEPLOYMENT.md`.
-   b. If Vercel's egress is accepted, set `OPEN_METEO_BASE_URL` on Render to
-      the proxy URL and the problem disappears everywhere.
-   c. If not, warming stays the answer; consider a paid Open-Meteo key only if
-      this ever needs to be more than a portfolio demo.
-   **Before the exam:** run
+0. **Set `OPEN_METEO_BASE_URL` on Render** to
+   `https://hiking-weather.vercel.app/upstream/open-meteo/v1` (Environment →
+   Add; the service restarts itself). That is the last step of the Open-Meteo
+   fix — everything else is pushed. Verify with a coordinate that was never
+   warmed; see `docs/DEPLOYMENT.md`.
+   **Before the exam (insurance, no longer required):** run
    `python -m app.seeds.warm_cache --regions --ipv4 45.36,25.46` that morning
    with `FORECAST_CACHE_TTL_MINUTES=1440`.
 
@@ -209,11 +205,19 @@ proxy). The cookie architecture (DECISIONS 017) works as designed.
     sleeps 2.5 s between batches (~480 points/min) and backs off 65 s on a 429.
     It also skips already-fresh cells up front, so a re-run before a demo takes
     3 s instead of 6 minutes of sleeping.
-- **Still unresolved:** the backend cannot fetch forecasts itself. Warming is a
-  workaround, not a fix. Next candidate is proxying upstream calls through
-  Vercel's edge — the rewrite is already in `frontend/vercel.json`
-  (`/upstream/open-meteo/*`), untested until it deploys. Test command and the
-  follow-up config change are in `docs/DEPLOYMENT.md`.
+- **RESOLVED, same day — forecast calls now leave through Vercel.** Open-Meteo
+  accepts Vercel's edge (5/5 full 7-day requests and a 20-point bulk call, all
+  200 in ~70 ms) while refusing Render. `frontend/vercel.json` proxies
+  `/upstream/open-meteo/*` to Open-Meteo and `OPEN_METEO_BASE_URL` (set in
+  `render.yaml`) points the backend at it. **Zero application code changed** —
+  the base URL was always configuration, which is the payoff for not
+  hard-coding it. Trade-offs in DECISIONS 020: the backend now depends on the
+  frontend's domain, and that path is an unauthenticated proxy. Archive and
+  geocoding stay direct (separate quotas, still fine); standby rewrites exist
+  for them.
+- **Cache warming is now insurance, not the mechanism.** Still worth running
+  before a demo — it covers Vercel or Open-Meteo having a bad day — but
+  forecasts work everywhere without it.
 
 ### 2026-08-10 — Deployment prep (code side complete, verified in Docker)
 

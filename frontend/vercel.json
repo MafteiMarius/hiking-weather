@@ -12,6 +12,14 @@
       "source": "/upstream/open-meteo/:path*",
       "destination": "https://api.open-meteo.com/:path*"
     },
+    {
+      "source": "/upstream/open-meteo-archive/:path*",
+      "destination": "https://archive-api.open-meteo.com/:path*"
+    },
+    {
+      "source": "/upstream/open-meteo-geocode/:path*",
+      "destination": "https://geocoding-api.open-meteo.com/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

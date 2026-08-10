@@ -44,6 +44,23 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
+      # Open-Meteo's forecast API refuses Render's shared outbound IP with
+      # "Minutely API request limit exceeded" — a quota other tenants have
+      # already spent (DECISIONS 020). Vercel's edge is accepted, so forecast
+      # calls are routed back out through the frontend's own domain, which
+      # proxies /upstream/open-meteo/* straight to Open-Meteo.
+      #
+      # Coupling the backend to the frontend's URL is not lovely, but it is one
+      # config value and it is the difference between a working app and a 502.
+      # If Render ever gets a clean egress IP, delete this key and the direct
+      # default in config.py takes over again.
+      #
+      # The archive and geocoding hosts are NOT routed: they have separate
+      # quotas and still answer Render directly. Standby rewrites exist in
+      # frontend/vercel.json if they ever stop.
+      - key: OPEN_METEO_BASE_URL
+        value: https://hiking-weather.vercel.app/upstream/open-meteo/v1
+
     # PORT is injected by Render (and bound by the Dockerfile's CMD).
     # ANTHROPIC_API_KEY is deliberately unset: AI stays on hold and the
     # endpoint returns 503 by design (DECISIONS 012).

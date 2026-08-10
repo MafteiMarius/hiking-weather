@@ -189,28 +189,39 @@ Entries live for `FORECAST_CACHE_TTL_MINUTES`, so **re-run it the morning of
 the presentation.** After expiry the stale fallback keeps serving the same data
 with a visible "showing saved data" banner.
 
-### The unresolved part
+### The actual fix — forecast calls leave through Vercel
 
-Warming is a workaround. The real fix is getting Open-Meteo to accept the
-backend's requests. A real `User-Agent` was tried and did **not** help. The next
-candidate is proxying upstream calls through Vercel's edge, which
-`frontend/vercel.json` is already wired for:
+Confirmed 2026-08-10: Open-Meteo accepts Vercel's edge (200 in ~70 ms) while
+refusing Render. So the backend's forecast traffic is routed back out through
+the frontend's own domain:
 
 ```
-/upstream/open-meteo/:path*  ->  https://api.open-meteo.com/:path*
+OPEN_METEO_BASE_URL = https://hiking-weather.vercel.app/upstream/open-meteo/v1
 ```
 
-To test it, deploy that rewrite and then check whether Vercel's egress is
-accepted:
+`frontend/vercel.json` rewrites `/upstream/open-meteo/*` straight to
+`api.open-meteo.com`. This is set in `render.yaml`; on an existing service, set
+it in the Render dashboard (Environment → Add) — a dashboard change restarts the
+service on its own, no redeploy needed.
+
+No application code is involved: the base URL was always configuration.
+Trade-offs (backend now depends on the frontend domain; that path is an open
+proxy) are recorded in DECISIONS 020.
+
+Verify after setting it — this must work for a coordinate that was **never**
+warmed:
 
 ```bash
-curl -s "https://<app>.vercel.app/upstream/open-meteo/v1/forecast?latitude=45.4&longitude=25.5&daily=weather_code&forecast_days=1"
+curl.exe -s -o /dev/null -w "%{http_code}\n" \
+  "https://hiking-weather.vercel.app/api/v1/forecast?lat=47.12&lng=23.88&days=7"
 ```
 
-A 200 means Vercel's IPs are not blocked — set `OPEN_METEO_BASE_URL` on Render
-to `https://<app>.vercel.app/upstream/open-meteo/v1` and the forecast works
-everywhere, no warming needed. A 429 means the same shared-IP problem, and
-warming stays the answer.
+*(In PowerShell use `curl.exe`, not `curl` — the latter is an alias for
+`Invoke-WebRequest` and does not accept `-s`.)*
+
+With this working, cache warming is **insurance, not a dependency**: keep
+running it before a demo so the app survives Vercel or Open-Meteo having a bad
+day, but forecasts work everywhere without it.
 
 ## Costs
 

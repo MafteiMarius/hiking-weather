@@ -462,6 +462,37 @@ demo. This is a workaround for a free-tier constraint, not an architecture —
 if the User-Agent fix or a different egress IP resolves the block, warming
 becomes a nice-to-have rather than a dependency.
 
+**RESOLVED (2026-08-10, same day) — route forecast calls out through Vercel.**
+
+The User-Agent theory was wrong: with a proper agent deployed, Render was still
+refused. The log line settled it —
+`HTTP 429 "Minutely API request limit exceeded"` — so this is a *shared
+per-minute quota* that Render's IP is permanently over, not a ban on us.
+
+Vercel's edge is not: the same requests from `hiking-weather.vercel.app` return
+200 in ~70 ms, including the 20-point bulk call. So `frontend/vercel.json`
+proxies `/upstream/open-meteo/*` to Open-Meteo, and `OPEN_METEO_BASE_URL` on
+Render points at that path. The backend's outbound forecast traffic now leaves
+from Vercel instead of Render. **No application code changed** — the base URL
+was already configuration.
+
+*Trade-offs accepted:*
+
+- **The backend now depends on the frontend's domain.** Inverted, and slightly
+  absurd. It is one env var, reversible by deleting the key, and the honest
+  alternative was a broken app or a paid plan.
+- **`/upstream/open-meteo/*` is an open proxy.** Anyone could route their own
+  Open-Meteo traffic through the site and spend its quota. Acceptable for an
+  unadvertised portfolio deployment; it would need an auth check or a same-origin
+  restriction before this was anything more.
+- **Archive and geocoding stay direct.** Different hosts, different quotas, and
+  they answer Render fine. Standby rewrites exist so switching them is an env
+  var away, but routing large ERA5 payloads through Vercel for no reason would
+  just spend bandwidth.
+- **Warming is now a backup, not the mechanism.** Keep it for demo-day
+  insurance and because it still protects against Vercel being the thing that
+  breaks.
+
 ---
 
 ## 006 — recharts v3 (not v2)
