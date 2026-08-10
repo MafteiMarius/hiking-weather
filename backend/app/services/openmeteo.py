@@ -19,6 +19,7 @@ WHY tenacity for retries:
 """
 
 import hashlib
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -35,6 +36,31 @@ from tenacity import (
 
 from app.core.config import get_settings
 from app.db.models import ForecastCache
+
+logger = logging.getLogger(__name__)
+
+
+def _raise_for_status(r: httpx.Response, what: str) -> None:
+    """`raise_for_status`, but log why first.
+
+    Open-Meteo explains itself in the response body — "Daily API request limit
+    exceeded", a bad parameter name, and so on — and `raise_for_status()`
+    throws that body away, leaving only a bare 502 at the endpoint. On a host
+    with no shell (Render's free tier) that body is the only way to tell
+    "we are rate-limited" apart from "we sent a malformed request", so it goes
+    to the log before the exception propagates.
+
+    Truncated because these bodies are occasionally an HTML error page.
+    """
+    if r.is_error:
+        logger.error(
+            "%s failed: HTTP %s from %s - %s",
+            what,
+            r.status_code,
+            r.request.url.host,
+            r.text[:300].replace("\n", " "),
+        )
+    r.raise_for_status()
 
 # Exactly the daily variables we need for scoring — nothing more.
 _DAILY_VARS = ",".join([
@@ -87,7 +113,7 @@ async def _fetch_forecast(
         },
         timeout=10.0,
     )
-    r.raise_for_status()
+    _raise_for_status(r, "forecast fetch")
     return r.json()  # type: ignore[no-any-return]
 
 
@@ -172,7 +198,7 @@ async def _fetch_forecast_bulk(
         },
         timeout=20.0,
     )
-    r.raise_for_status()
+    _raise_for_status(r, "bulk forecast fetch")
     data = r.json()
     return data if isinstance(data, list) else [data]
 
@@ -254,7 +280,7 @@ async def geocode(q: str, client: httpx.AsyncClient) -> dict[str, Any]:
         params={"name": q, "count": 5, "language": "en", "format": "json"},
         timeout=10.0,
     )
-    r.raise_for_status()
+    _raise_for_status(r, "geocode")
     return r.json()  # type: ignore[no-any-return]
 
 
@@ -278,5 +304,5 @@ async def get_elevation(lat: float, lng: float, client: httpx.AsyncClient) -> fl
         },
         timeout=10.0,
     )
-    r.raise_for_status()
+    _raise_for_status(r, "elevation fetch")
     return float(r.json().get("elevation", 0.0))

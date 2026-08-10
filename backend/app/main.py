@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -6,6 +7,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
 from app.core.config import get_settings
+
+# Uvicorn configures its own loggers but leaves the root logger alone, so
+# application logs would otherwise fall through to logging's unformatted
+# "last resort" handler (and anything below WARNING would vanish entirely).
+# Configuring root here means `logger.error(...)` in a service shows up in the
+# host's log stream with a timestamp — the only debugging surface available on
+# a free tier with no shell access.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 
 @asynccontextmanager
