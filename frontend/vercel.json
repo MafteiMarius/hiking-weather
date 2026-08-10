@@ -8,6 +8,10 @@
       "source": "/api/:path*",
       "destination": "https://hikecast-api.onrender.com/api/:path*"
     },
+    {
+      "source": "/upstream/open-meteo/:path*",
+      "destination": "https://api.open-meteo.com/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

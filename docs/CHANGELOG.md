@@ -49,14 +49,18 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
-0. **Push the pending fixes and read the logs.** The working tree has the
-   upstream-error logging, the User-Agent, and the stale-cache fallback — none
-   of it is deployed yet. After Render redeploys, hit the forecast endpoint and
-   read Render → Logs for the `forecast fetch failed:` line. **429** = shared
-   quota (the User-Agent may or may not help; consider proxying Open-Meteo
-   calls through Vercel so they leave from a different IP). **403** = a
-   deliberate block, needs a different egress entirely. See DECISIONS 020.
-   *Before the exam:* re-run `app/seeds/warm_cache.py` that morning.
+0. **Make the backend able to fetch forecasts again.** Cause is known: shared
+   minutely rate limit on Render's egress IP (429, DECISIONS 020). Mitigated by
+   cache warming, not fixed. Next step, in order:
+   a. Deploy `frontend/vercel.json` (already has the `/upstream/open-meteo/*`
+      rewrite) and curl it — see "The unresolved part" in `docs/DEPLOYMENT.md`.
+   b. If Vercel's egress is accepted, set `OPEN_METEO_BASE_URL` on Render to
+      the proxy URL and the problem disappears everywhere.
+   c. If not, warming stays the answer; consider a paid Open-Meteo key only if
+      this ever needs to be more than a portfolio demo.
+   **Before the exam:** run
+   `python -m app.seeds.warm_cache --regions --ipv4 45.36,25.46` that morning
+   with `FORECAST_CACHE_TTL_MINUTES=1440`.
 
 1. **Deployment — code side DONE, provider side pending.** Follow
    `docs/DEPLOYMENT.md` start to finish. Stack is Neon + Render + Vercel, all
@@ -187,10 +191,29 @@ proxy). The cookie architecture (DECISIONS 017) works as designed.
   the app's own `get_forecasts_bulk`, so keys match exactly. Warmed 48 points
   (all trailheads/summits + the map's default view) at a 24 h TTL, which is
   what makes the live site work right now.
-- **Known gap:** an unwarmed map click still 502s. Warming a whole massif isn't
-  practical — the cache key is 0.01° (~1 km) while Open-Meteo's grid is ~11 km,
-  so a region is thousands of keys. Real fix is the User-Agent, a different
-  egress IP, or proxying upstream calls through Vercel.
+- **Follow-up, same day — map clicks fixed by region warming.** Deployed the
+  above; confirmed the new code is live (`stale`/`fetched_at` present) and that
+  **the User-Agent fix did NOT work** — Open-Meteo still refuses Render.
+  - The new logging immediately paid for itself: the exact upstream reason is
+    `HTTP 429 "Minutely API request limit exceeded"`. So it is a *shared
+    minutely quota*, permanently saturated by other Render tenants — not a
+    permanent ban. That also means it may intermittently succeed.
+  - Warming a region turned out to be far cheaper than the earlier estimate:
+    **~4.7 kB per cell**, 332 cells in 15 s. All 8 massifs = 3,057 cells = 27 MB
+    of Neon's 500 MB. `--box` and `--regions` added to `warm_cache.py`, stepping
+    on the exact 0.01° grid `_cache_key` rounds to, so any click inside a warmed
+    box hits a warmed entry. Verified: one click per massif, all HTTP 200 on the
+    live site.
+  - **Pacing was learned the hard way:** firing 8 boxes back to back tripped
+    Open-Meteo's *minutely* limit on Marius' own connection. The warmer now
+    sleeps 2.5 s between batches (~480 points/min) and backs off 65 s on a 429.
+    It also skips already-fresh cells up front, so a re-run before a demo takes
+    3 s instead of 6 minutes of sleeping.
+- **Still unresolved:** the backend cannot fetch forecasts itself. Warming is a
+  workaround, not a fix. Next candidate is proxying upstream calls through
+  Vercel's edge — the rewrite is already in `frontend/vercel.json`
+  (`/upstream/open-meteo/*`), untested until it deploys. Test command and the
+  follow-up config change are in `docs/DEPLOYMENT.md`.
 
 ### 2026-08-10 — Deployment prep (code side complete, verified in Docker)
 

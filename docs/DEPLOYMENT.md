@@ -158,26 +158,59 @@ Two mitigations are in the code: the backend serves an expired cache entry
 flagged `stale` instead of 502-ing, and the UI says so. But a location with
 **no** cache entry at all still fails — we don't invent weather.
 
-So before any demo, warm the cache from a machine Open-Meteo will talk to:
+So before any demo, warm the cache from a machine Open-Meteo will talk to.
+**This is the one command:**
 
-```bash
+```powershell
 cd backend
-# PowerShell
 $env:DATABASE_URL="<Neon string>"; $env:FORECAST_CACHE_TTL_MINUTES="1440"
-python -m app.seeds.warm_cache --days 7 --ipv4 45.36,25.46
+python -m app.seeds.warm_cache --regions --ipv4 45.36,25.46
 ```
 
-That covers every trailhead and summit (so trails and recommendations work),
-plus any extra `lat,lng` you pass. **Include `45.36,25.46`** — the map's default
-view, the first thing that loads.
+`--regions` covers a padded bounding box around every massif in the catalogue
+(~3,000 cells, ~14 MB, ~6 minutes cold), so **clicking anywhere near a trail
+works**, not just the trailheads. `45.36,25.46` is the map's default view — the
+first thing that loads. Already-fresh cells are skipped, so a re-run when
+nothing has expired takes about 3 seconds.
 
 `--ipv4` is needed on networks that resolve Neon's IPv6 records but can't route
 them; without it asyncpg spends its whole connect timeout on unreachable
 addresses. Harmless to pass always.
 
+Narrower options: `--box 45.30,25.35:45.50,25.65` for one region, or bare
+`lat,lng` arguments for individual points.
+
+**Don't remove the pacing.** The script sleeps between batches because
+Open-Meteo's limit is *per minute* — warming eight regions back to back
+rate-limited the developer's own connection for a minute. It also backs off and
+retries on a 429.
+
 Entries live for `FORECAST_CACHE_TTL_MINUTES`, so **re-run it the morning of
 the presentation.** After expiry the stale fallback keeps serving the same data
 with a visible "showing saved data" banner.
+
+### The unresolved part
+
+Warming is a workaround. The real fix is getting Open-Meteo to accept the
+backend's requests. A real `User-Agent` was tried and did **not** help. The next
+candidate is proxying upstream calls through Vercel's edge, which
+`frontend/vercel.json` is already wired for:
+
+```
+/upstream/open-meteo/:path*  ->  https://api.open-meteo.com/:path*
+```
+
+To test it, deploy that rewrite and then check whether Vercel's egress is
+accepted:
+
+```bash
+curl -s "https://<app>.vercel.app/upstream/open-meteo/v1/forecast?latitude=45.4&longitude=25.5&daily=weather_code&forecast_days=1"
+```
+
+A 200 means Vercel's IPs are not blocked — set `OPEN_METEO_BASE_URL` on Render
+to `https://<app>.vercel.app/upstream/open-meteo/v1` and the forecast works
+everywhere, no warming needed. A 429 means the same shared-IP problem, and
+warming stays the answer.
 
 ## Costs
 
