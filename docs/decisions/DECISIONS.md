@@ -414,6 +414,56 @@ instance, or back to Railway, is a config change rather than a rewrite.
 
 ---
 
+## 020 — Open-Meteo blocks shared hosting IPs; degrade to stale, never to fiction
+
+**Observed (2026-08-10, first live deploy).** `api.open-meteo.com` returns an
+error to Render's outbound IP on every request, instantly. Meanwhile
+`geocoding-api.open-meteo.com` and `archive-api.open-meteo.com` — different
+hosts, separate quota buckets — work fine from the same container. The
+identical requests succeed from a residential IP, including the trivial
+elevation one. So the requests are valid; the *caller* is being refused.
+Open-Meteo's free API rate-limits by IP, and shared cloud IPs arrive
+pre-exhausted by other tenants.
+
+**Decision, three parts.**
+
+1. **Log what upstream actually said.** `raise_for_status()` discarded the
+   response body, so a bare 502 was all anyone ever saw — and Render's free
+   tier has no shell to investigate with. `_raise_for_status()` now logs
+   status, host, and body first; `main.py` configures the root logger, which
+   uvicorn leaves alone, so those lines reach the host's log stream.
+2. **Send a real User-Agent.** The client sent `python-httpx/x.y`, which from a
+   datacenter IP is indistinguishable from a scraper — and these providers
+   have tightened blocking precisely because of scraper traffic. We already
+   learned this with Overpass (406 without a custom agent) and failed to
+   generalise it.
+3. **Serve stale rather than fail.** `get_forecast` no longer filters the cache
+   lookup on `expires_at`; an expired row is kept as a fallback. If upstream
+   refuses and *any* cached payload exists, it is returned with `stale=True`.
+
+**Why `stale` is on the wire and in the UI, not swallowed.** This app exists to
+help someone decide whether to walk up a mountain. Silently presenting
+yesterday's numbers as today's is worse than an error page, because an error
+is obviously an error. So the flag reaches the client, and
+`StaleForecastBanner` says which timestamp the data is from and to check
+conditions before setting out.
+
+**What we deliberately did NOT do:** fall back to *anything* when no cache
+entry exists. A missing forecast stays a 502. Interpolating from neighbouring
+cells or showing climatology-as-forecast would be inventing weather, and the
+whole point of the score is that it is grounded in real data.
+
+**Operational consequence — `app/seeds/warm_cache.py`.** Since the backend
+cannot reliably fill its own cache, a laptop fills it: the script calls the
+application's own `get_forecasts_bulk` (so entries land under exactly the keys
+the API reads) for every trailhead and summit plus any extra coordinates,
+against production. Run it with a long `FORECAST_CACHE_TTL_MINUTES` before a
+demo. This is a workaround for a free-tier constraint, not an architecture —
+if the User-Agent fix or a different egress IP resolves the block, warming
+becomes a nice-to-have rather than a dependency.
+
+---
+
 ## 006 — recharts v3 (not v2)
 
 **Original scaffold had:** `recharts ^3.8.1`  

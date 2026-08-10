@@ -32,6 +32,11 @@ export interface ForecastResponse {
   days: DayForecast[];
   hours: HourForecast[];
   cached: boolean;
+  /** True when the weather API refused the backend and this payload came from
+   *  an EXPIRED cache entry. Must be surfaced — see StaleForecastBanner. */
+  stale: boolean;
+  /** ISO timestamp of the real upstream fetch, for "as of ..." wording. */
+  fetched_at: string | null;
 }
 
 export interface ClimatologyResponse {

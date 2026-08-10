@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -37,6 +38,13 @@ class ForecastResponse(BaseModel):
     # (those entries age out within the 30-minute TTL).
     hours: list[HourForecast] = []
     cached: bool                        # True when served from forecast_cache table
+    # True when the upstream API refused us and this is an EXPIRED cache entry.
+    # The client must tell the user — a hiking-safety app showing yesterday's
+    # weather as today's is worse than showing an error.
+    stale: bool = False
+    # When the payload was actually fetched from Open-Meteo, so the UI can say
+    # how old it is. None only for legacy rows written before this field.
+    fetched_at: datetime | None = None
 
 
 class GeocodeResult(BaseModel):

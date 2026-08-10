@@ -49,6 +49,15 @@ not GPS tracks (DECISIONS 013). ERA5 undercounts thunderstorms (DECISIONS 011).
 
 ## NEXT UP (priority order, with pickup context)
 
+0. **Push the pending fixes and read the logs.** The working tree has the
+   upstream-error logging, the User-Agent, and the stale-cache fallback — none
+   of it is deployed yet. After Render redeploys, hit the forecast endpoint and
+   read Render → Logs for the `forecast fetch failed:` line. **429** = shared
+   quota (the User-Agent may or may not help; consider proxying Open-Meteo
+   calls through Vercel so they leave from a different IP). **403** = a
+   deliberate block, needs a different egress entirely. See DECISIONS 020.
+   *Before the exam:* re-run `app/seeds/warm_cache.py` that morning.
+
 1. **Deployment — code side DONE, provider side pending.** Follow
    `docs/DEPLOYMENT.md` start to finish. Stack is Neon + Render + Vercel, all
    free tiers, $0/month, no card (DECISIONS 019). It needs three things only
@@ -136,6 +145,52 @@ npx eslint src && npx tsc --noEmit       # frontend checks
 ---
 
 ## SESSION LOG (newest first)
+
+### 2026-08-10 (later) — First live deploy; Open-Meteo blocks Render's IP
+
+**The app is live**: https://hiking-weather.vercel.app — Neon + Render + Vercel,
+$0/month. Marius did the provider steps; verified end to end in the browser
+(Romanian 7-day forecast, scores, instability banner, all through the Vercel
+proxy). The cookie architecture (DECISIONS 017) works as designed.
+
+- **Seeding hit an IPv6 trap.** The trail seeder timed out from Marius' laptop:
+  DNS returns Neon's AAAA records first, IPv6 to Neon doesn't route there, and
+  asyncpg burns its 60 s budget on three unreachable v6 addresses before ever
+  trying the working v4 ones. Worked around per-process (force `AF_INET`), not
+  in app code — the deployed backend reaches Neon over IPv4 fine. 25 trails in.
+- **Then the real problem (DECISIONS 020):** `api.open-meteo.com` refuses
+  Render's shared outbound IP — instantly, every time, while geocoding and the
+  ERA5 archive (different hosts, separate buckets) work from the same
+  container. The identical requests succeed from a residential IP. Free-tier
+  IP rate limiting, arriving pre-exhausted by other tenants.
+- **Three fixes, all verified:**
+  1. `_raise_for_status()` logs upstream status + body before raising, and
+     `main.py` configures the root logger (uvicorn leaves it alone) — the app
+     was previously undebuggable on a host with no shell. Demonstrated against
+     a real Open-Meteo 400.
+  2. Real `User-Agent` on the shared httpx client. `python-httpx/x.y` from a
+     datacenter IP looks like a scraper; we already knew this from Overpass and
+     hadn't generalised it. Plausible root-cause fix, not yet confirmed live.
+  3. **Stale-cache fallback**: the cache lookup no longer filters on
+     `expires_at`, so an expired row survives as a fallback. Upstream refusal +
+     any cached payload → 200 with `stale=True` instead of 502. No cache at all
+     still 502s — inventing weather is not a fallback (DECISIONS 020).
+- **`stale` is surfaced, not swallowed.** New `stale` + `fetched_at` on
+  `ForecastResponse`, and `StaleForecastBanner` tells the user which timestamp
+  the data is from and to check conditions before setting out. A hiking-safety
+  app showing yesterday's numbers as today's is worse than showing an error.
+  Browser-verified in both languages (RO/EN, localized timestamps), console
+  clean, eslint + tsc clean.
+- **+4 tests (111 total)**: stale fallback on 429, stale fallback on network
+  error, no-cache still 502s, fresh fetch never flagged stale.
+- **`app/seeds/warm_cache.py`** — fills the production cache from a laptop via
+  the app's own `get_forecasts_bulk`, so keys match exactly. Warmed 48 points
+  (all trailheads/summits + the map's default view) at a 24 h TTL, which is
+  what makes the live site work right now.
+- **Known gap:** an unwarmed map click still 502s. Warming a whole massif isn't
+  practical — the cache key is 0.01° (~1 km) while Open-Meteo's grid is ~11 km,
+  so a region is thousands of keys. Real fix is the User-Agent, a different
+  egress IP, or proxying upstream calls through Vercel.
 
 ### 2026-08-10 — Deployment prep (code side complete, verified in Docker)
 

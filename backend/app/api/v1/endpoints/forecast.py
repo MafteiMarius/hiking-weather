@@ -36,12 +36,13 @@ async def forecast_endpoint(
     http: httpx.AsyncClient = Depends(get_http_client),
 ) -> ForecastResponse:
     try:
-        payload, cached = await get_forecast(lat, lng, days, http, session)
+        fetched = await get_forecast(lat, lng, days, http, session)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=502, detail="Weather API error") from exc
     except (httpx.NetworkError, httpx.TimeoutException) as exc:
         raise HTTPException(status_code=504, detail="Weather API unreachable") from exc
 
+    payload = fetched.payload
     daily = payload["daily"]
     scored_days: list[DayForecast] = []
 
@@ -94,7 +95,9 @@ async def forecast_endpoint(
         timezone=str(payload.get("timezone", "UTC")),
         days=scored_days,
         hours=hours,
-        cached=cached,
+        cached=fetched.cached,
+        stale=fetched.stale,
+        fetched_at=fetched.fetched_at,
     )
 
 

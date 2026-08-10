@@ -21,7 +21,7 @@ WHY tenacity for retries:
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -117,34 +117,72 @@ async def _fetch_forecast(
     return r.json()  # type: ignore[no-any-return]
 
 
+class ForecastResult(NamedTuple):
+    """What `get_forecast` hands back.
+
+    `stale` is the interesting one: it means the upstream API refused us and we
+    fell back to an expired cache entry. Callers must surface that rather than
+    quietly presenting old weather as current — this app is used to decide
+    whether to walk up a mountain.
+    """
+
+    payload: dict[str, Any]
+    cached: bool
+    stale: bool
+    fetched_at: datetime | None
+
+
 async def get_forecast(
     lat: float,
     lng: float,
     days: int,
     client: httpx.AsyncClient,
     session: AsyncSession,
-) -> tuple[dict[str, Any], bool]:
-    """Return (raw Open-Meteo payload, was_cached).
+) -> ForecastResult:
+    """Fetch a forecast, preferring a fresh cache entry, falling back to a stale one.
 
     The raw payload is stored in JSONB so scoring logic can be changed
     without re-fetching. Score is always computed fresh on read.
+
+    Three outcomes:
+      * fresh cache hit          -> cached=True,  stale=False
+      * successful upstream call -> cached=False, stale=False
+      * upstream refused us but
+        an expired entry exists  -> cached=True,  stale=True
+
+    The third case exists because Open-Meteo's free API rate-limits by IP, and
+    shared hosting IPs get rejected through no fault of ours. Serving the last
+    known payload (clearly flagged) beats a 502 that makes the whole app look
+    broken. With nothing cached at all we still raise — inventing weather is
+    not an option.
     """
     key = _cache_key(lat, lng, days)
     now = datetime.now(timezone.utc)
 
     # --- Cache lookup ---
+    # Deliberately NOT filtered on expires_at: an expired row is still useful
+    # as a fallback, so freshness is judged here instead of in SQL.
     result = await session.execute(
-        select(ForecastCache).where(
-            ForecastCache.cache_key == key,
-            ForecastCache.expires_at > now,
-        )
+        select(ForecastCache).where(ForecastCache.cache_key == key)
     )
     row = result.scalar_one_or_none()
-    if row is not None:
-        return row.payload, True
+    if row is not None and row.expires_at > now:
+        return ForecastResult(row.payload, True, False, row.fetched_at)
 
-    # --- Cache miss: fetch from API ---
-    payload = await _fetch_forecast(client, lat, lng, days)
+    # --- Cache miss or expired: fetch from API ---
+    try:
+        payload = await _fetch_forecast(client, lat, lng, days)
+    except (httpx.HTTPStatusError, httpx.NetworkError, httpx.TimeoutException):
+        if row is None:
+            raise  # nothing to fall back to
+        logger.warning(
+            "serving STALE forecast for %.2f,%.2f (fetched %s) - upstream refused",
+            lat,
+            lng,
+            row.fetched_at,
+        )
+        return ForecastResult(row.payload, True, True, row.fetched_at)
+
     settings = get_settings()
 
     stmt = (
@@ -170,7 +208,7 @@ async def get_forecast(
     await session.execute(stmt)
     await session.commit()
 
-    return payload, False
+    return ForecastResult(payload, False, False, now)
 
 
 @retry(

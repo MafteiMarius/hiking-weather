@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useForecast } from "@/features/forecast/useForecast";
 import { DayCard } from "@/features/forecast/DayCard";
 import { InstabilityBanner } from "@/features/forecast/InstabilityBanner";
+import { StaleForecastBanner } from "@/features/forecast/StaleForecastBanner";
 import { PackingPanel } from "@/features/forecast/PackingPanel";
 import { ProfileDialog } from "@/features/profile/ProfileDialog";
 import { RecommendPanel } from "@/features/trails/RecommendPanel";
@@ -233,8 +234,12 @@ export function ForecastPage() {
 
       {/* ── 7-day strip ──────────────────────────────────────────────────── */}
       <div className="shrink-0 border-t border-stone-200 bg-stone-50">
-        {/* The instability warning stays visible even when collapsed — safety
-            info shouldn't fold away with the convenience UI. */}
+        {/* Safety notices stay visible even when the strip is collapsed —
+            they shouldn't fold away with the convenience UI. */}
+        <StaleForecastBanner
+          stale={forecast?.stale ?? false}
+          fetchedAt={forecast?.fetched_at ?? null}
+        />
         <InstabilityBanner lat={lat} lng={lng} />
         <div className="flex items-center gap-2 px-4 py-2">
           <Mountain size={14} className="text-green-700" />

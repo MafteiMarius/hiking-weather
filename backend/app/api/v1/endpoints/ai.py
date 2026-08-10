@@ -47,7 +47,7 @@ async def equipment_endpoint(
 
     # Forecast context (usually a cache hit — the user is looking at this spot)
     try:
-        payload, _ = await get_forecast(body.lat, body.lng, 7, http, session)
+        payload = (await get_forecast(body.lat, body.lng, 7, http, session)).payload
     except (httpx.HTTPStatusError, httpx.NetworkError, httpx.TimeoutException) as exc:
         raise HTTPException(status_code=502, detail="Weather API error") from exc
 

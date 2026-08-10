@@ -148,6 +148,37 @@ Then in a real browser — the only way to test the cookie path:
 5. Delete the `hikecast_access` cookie and act again — the silent refresh should
    restore access without bouncing you to login.
 
+## Open-Meteo blocks Render's IP — read this before demoing
+
+`api.open-meteo.com` rate-limits by IP and refuses Render's shared outbound
+address (DECISIONS 020). Geocoding and the ERA5 archive use different hosts and
+still work; the *forecast* and *elevation* endpoints are the affected ones.
+
+Two mitigations are in the code: the backend serves an expired cache entry
+flagged `stale` instead of 502-ing, and the UI says so. But a location with
+**no** cache entry at all still fails — we don't invent weather.
+
+So before any demo, warm the cache from a machine Open-Meteo will talk to:
+
+```bash
+cd backend
+# PowerShell
+$env:DATABASE_URL="<Neon string>"; $env:FORECAST_CACHE_TTL_MINUTES="1440"
+python -m app.seeds.warm_cache --days 7 --ipv4 45.36,25.46
+```
+
+That covers every trailhead and summit (so trails and recommendations work),
+plus any extra `lat,lng` you pass. **Include `45.36,25.46`** — the map's default
+view, the first thing that loads.
+
+`--ipv4` is needed on networks that resolve Neon's IPv6 records but can't route
+them; without it asyncpg spends its whole connect timeout on unreachable
+addresses. Harmless to pass always.
+
+Entries live for `FORECAST_CACHE_TTL_MINUTES`, so **re-run it the morning of
+the presentation.** After expiry the stale fallback keeps serving the same data
+with a visible "showing saved data" banner.
+
 ## Costs
 
 | Service | Plan | Cost | Limit that actually binds |

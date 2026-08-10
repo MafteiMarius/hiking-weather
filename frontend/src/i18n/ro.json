@@ -67,6 +67,11 @@
   "instability": {
     "title": "Instabil istoric în această săptămână a anului."
   },
+  "stale": {
+    "title": "Se afișează date salvate.",
+    "since": "Serviciul meteo nu este disponibil, deci prognoza este din {{when}}. Verifică condițiile actuale înainte de plecare.",
+    "unknown": "Serviciul meteo nu este disponibil, deci prognoza poate fi depășită. Verifică condițiile actuale înainte de plecare."
+  },
   "chart": {
     "noData": "Nu există date orare pentru această zi.",
     "temp": "Temp.",

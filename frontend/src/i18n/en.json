@@ -67,6 +67,11 @@
   "instability": {
     "title": "Historically unstable this week of the year."
   },
+  "stale": {
+    "title": "Showing saved data.",
+    "since": "The weather service is unavailable, so this forecast is from {{when}}. Check current conditions before setting out.",
+    "unknown": "The weather service is unavailable, so this forecast may be out of date. Check current conditions before setting out."
+  },
   "chart": {
     "noData": "No hourly data for this day.",
     "temp": "Temp",

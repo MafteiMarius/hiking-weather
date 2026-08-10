@@ -20,10 +20,19 @@ logging.basicConfig(
 )
 
 
+# Identify ourselves to upstream APIs. httpx's default User-Agent
+# ("python-httpx/x.y") coming from a datacenter IP is indistinguishable from
+# scraper traffic, and these providers have tightened blocking because of it —
+# Overpass already 406s without a custom agent (see docs/CHANGELOG.md gotchas).
+# A contactable identifier is both the polite thing to send and the difference
+# between being served and being filtered.
+_USER_AGENT = "HikeCast/1.0 (+https://hiking-weather.vercel.app)"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import httpx
-    app.state.http = httpx.AsyncClient()
+    app.state.http = httpx.AsyncClient(headers={"User-Agent": _USER_AGENT})
     yield
     await app.state.http.aclose()
     from app.db.session import engine

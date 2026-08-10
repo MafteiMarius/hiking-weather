@@ -6,9 +6,15 @@ httpx.AsyncClient to app.state.http; respx intercepts at the transport
 level so no special setup is needed beyond `with respx.mock:`.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import respx
-from httpx import AsyncClient, Response
+from httpx import AsyncClient, ConnectError, Response
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import ForecastCache
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -270,3 +276,94 @@ async def test_elevation_returns_value(client: AsyncClient) -> None:
 async def test_elevation_invalid_coords_returns_422(client: AsyncClient) -> None:
     resp = await client.get(ELEVATION_URL, params={"lat": 45.5, "lng": 200})
     assert resp.status_code == 422
+
+
+# ── Stale-cache fallback ─────────────────────────────────────────────────────
+# Open-Meteo's free API rate-limits by IP, and shared hosting IPs get rejected
+# through no fault of ours (this bit us on Render). Rather than 502 and look
+# broken, the app serves the last known payload and flags it as stale. These
+# tests pin both halves of that contract: it must fall back, and it must admit
+# that it did.
+
+async def _expire_cache(session: AsyncSession) -> None:
+    """Age every cached forecast into the past."""
+    await session.execute(
+        update(ForecastCache).values(
+            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1)
+        )
+    )
+    await session.commit()
+
+
+async def test_forecast_serves_stale_cache_when_upstream_rate_limits(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_CLEAR_DAY)
+        )
+        await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+
+    await _expire_cache(session)
+
+    with respx.mock:
+        # 429 is what a shared-IP rate limit actually looks like.
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(429, json={"error": True,
+                                             "reason": "Daily API request limit exceeded"})
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+
+    assert resp.status_code == 200          # NOT a 502
+    body = resp.json()
+    assert body["stale"] is True            # and it says so
+    assert body["cached"] is True
+    assert body["fetched_at"] is not None
+    assert body["days"][0]["score"] == 100  # the previously cached clear day
+
+
+async def test_forecast_serves_stale_cache_when_upstream_unreachable(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """Network failure, not just an HTTP error status, must also fall back."""
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_CLEAR_DAY)
+        )
+        await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+
+    await _expire_cache(session)
+
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            side_effect=ConnectError("no route to host")
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 45.5, "lng": 25.3, "days": 1})
+
+    assert resp.status_code == 200
+    assert resp.json()["stale"] is True
+
+
+async def test_forecast_without_any_cache_still_errors(client: AsyncClient) -> None:
+    """With nothing cached there is nothing honest to serve — 502 stands.
+    Inventing weather for a mountain-safety app is not an acceptable fallback."""
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(429, json={"error": True, "reason": "limit"})
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 47.77, "lng": 23.11, "days": 1})
+
+    assert resp.status_code == 502
+
+
+async def test_fresh_forecast_is_not_marked_stale(client: AsyncClient) -> None:
+    """Guard against the flag sticking on: a normal fetch is never stale."""
+    with respx.mock:
+        respx.get("https://api.open-meteo.com/v1/forecast").mock(
+            return_value=Response(200, json=_OM_CLEAR_DAY)
+        )
+        resp = await client.get(FORECAST_URL, params={"lat": 46.6, "lng": 24.4, "days": 1})
+
+    assert resp.status_code == 200
+    assert resp.json()["stale"] is False
+    assert resp.json()["cached"] is False
