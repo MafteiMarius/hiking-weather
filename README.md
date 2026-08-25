@@ -1,14 +1,10 @@
 # HikeCast
 
-A weather companion for hiking in the Romanian Carpathians.
+A weather companion for hiking mainly in the Romanian Carpathians, but can be used to look up the weather summary of any point on Earth.
 
-Most weather apps tell you it will be 18 degrees and partly cloudy. That is
-not what you need to know at 4 AM before driving to a trailhead. HikeCast
-answers the questions that actually matter on a mountain: are the ridge gusts
-safe, will a thunderstorm build over the ridge, is it cold enough up there for
-ice — and turns the answer into a single go / no-go score per day.
+Built as an app to help me make decisions when I have a hard time deciding on a trail to hike
 
-Built as a learning project and as a tool I use on real trips.
+It is a learning project and as a tool I use on real trips.
 
 ## Status
 
@@ -192,16 +188,13 @@ mountain (implementation: `backend/app/services/scoring.py`):
 - **Temperature** — extreme cold (< −15 °C) −30, extreme heat (> 38 °C) −25,
   with milder steps between.
 
-| Score | Label |
-| --- | --- |
+| Score  |   Label   |
+| ------ | --------- |
 | 85–100 | Excellent |
-| 70–84 | Good |
-| 50–69 | Fair |
-| 30–49 | Poor |
-| 0–29 | Dangerous |
-
-The response also carries the single worst factor as a human-readable reason
-("Thunderstorm — stay off exposed ridges").
+| 70–84  |   Good    |
+| 50–69  |   Fair    |
+| 30–49  |   Poor    |
+| 0–29   | Dangerous |
 
 ## Stack
 
@@ -255,8 +248,6 @@ seeder (idempotent + update mode), and the recommendation ranking
 
 Progress and per-session details: `docs/CHANGELOG.md`.
 
-- Production deployment: Neon (Postgres), Render (backend), Vercel (frontend).
-  Runbook: `docs/DEPLOYMENT.md`.
 - AI packing advice live test, or a local-LLM (Ollama) fallback so it works
   without an API key (design in `docs/decisions/DECISIONS.md`, 012).
 - ANM nowcasting alerts overlay, GPX import, multi-point trail forecasts.
